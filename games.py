@@ -24,9 +24,11 @@ class parity_game:
         self.edges = edges
         self.number_edges = len(edges)
         self.player = player
-        self.succ=[[] for x in range(n)]
+        self.succ = [[] for i in range(n)]
+        self.pred = [[] for i in range(n)]
         for t in edges:
             self.succ[t[0]].append((t[1],t[2]))
+            self.pred[t[1]].append((t[0],t[2]))
             
     def print(self):
         print("PARITY GAME:")

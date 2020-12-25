@@ -16,9 +16,8 @@ class asym_progress_measure:
         self.game = game
         self.player = player
         self.height = game.max_priority // 2
-        self.map = [[] for i in range(game.size)]
-        for i in range(game.size):
-            self.map[i] = trees.position(self.height, game.size)
+        self.map = [trees.position(self.height, game.size) for i in range(game.size)]
+        self.destination = [self.compute_destination(i) for i in range(game.size)]
             
     def print(self):
         print("ASYMETRIC PM:")
@@ -27,7 +26,7 @@ class asym_progress_measure:
             print("position of %d-th node:" %i)
             self.map[i].print()
 
-    def destination(self, i):
+    def compute_destination(self, i):
         rep = trees.position(self.height, self.game.size)
         pos_list=[self.map[suc[0]].min_source_for_valid_edge(self.player, suc[1]) for suc in self.game.succ[i]] #suc[0]=successor, suc[1]=priority
         if self.game.player[i] == self.player:
@@ -45,10 +44,12 @@ class asym_progress_measure:
             return(rep)
 
     def lift(self,i):
-        self.map[i] = self.destination(i)
+        self.map[i] = self.destination[i]
+        for (predecessor, priority) in self.game.pred[i] :
+            self.destination[predecessor] = self.compute_destination(predecessor)
 
     def list_invalid(self):
-        return([i for i in range(self.game.size) if not(self.destination(i).smaller(self.map[i]))])
+        return([i for i in range(self.game.size) if not(self.destination[i].smaller(self.map[i]))])
     
 
 class sym_progress_measure_strong:
@@ -73,7 +74,7 @@ class sym_progress_measure_strong:
         return([self.pair[0].map[i], self.pair[1].map[i]])
     
     def destination(self, i):
-        return([self.pair[0].destination(i), self.pair[1].destination(i)])
+        return((self.pair[0].destination[i], self.pair[1].destination[i])) #todo : change to tuple here
     
     def list_in_box(self, box):
         return([i for i in range(self.game.size) if box.in_box(self.pair_of_positions(i))])
@@ -85,37 +86,54 @@ class sym_progress_measure_strong:
         self.pair[0].lift(i)
         self.pair[1].lift(i)
     
+    #accelerates, and returns true if it has accelerated
     def accelerate(self, box):
         rep=False
         for player in [0,1]:
             scope=self.list_in_box(box)
-            if(all([self.pair[player].destination(i).smaller(self.pair[player].map[i]) for i in scope])):
+            if(all([self.pair[player].destination[i].smaller(self.pair[player].map[i]) for i in scope])):
                 n = box.pair[1-player].first_not_in_subtree()
                 rep=True
                 for i in scope:
                     self.pair[1-player].map[i]=n
+                    #update destinations
+                    for (predecessor, priority) in self.game.pred[i]:
+                        self.pair[1-player].destination[predecessor] = self.pair[1-player].compute_destination(predecessor)
+                    
         return(rep)
     
     #returns true if times out
     def empty(self, box, limit_time, infos):
+        
         infos["number of recursive calls"]+=1
         scope_init = self.list_in_box(box)
+        
         if(scope_init == []):
             infos["number of empty calls"]+=1
             return(False)
+        
         if(time.time() > limit_time):
             return(True)        
+        
         if(self.accelerate(box)):
             return(False)
+        
         very_invalid = self.list_dest_not_in_box(box)
+        
+        if(very_invalid == []):
+            infos["number of calls with no lift"]+=1
+        
         while(very_invalid != []):
             i = util.pickrandom(very_invalid)
             self.lift(i)
             infos["number of updates"]+=1
             very_invalid=self.list_dest_not_in_box(box)
+        
         if(self.accelerate(box)):
             return(False)
+        
         for sub in box.subboxes():
             if self.empty(sub, limit_time, infos):
                 return(True)
+        
         return(False)

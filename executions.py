@@ -33,8 +33,6 @@ class execution:
         print("infos:", self.infos)
         
     def printinfos(self):
-        print("is timeout ", self.is_timeout)
-        print("solution ", self.solution)
         print("infos:", self.infos)
         
         
@@ -80,6 +78,7 @@ class execution:
         self.infos["number of updates"]=0
         self.infos["number of recursive calls"]=0
         self.infos["number of empty calls"]=0
+        self.infos["number of calls with no lift"] = 0
         
         
         #running main recursive procedure
