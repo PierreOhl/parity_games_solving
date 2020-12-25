@@ -105,11 +105,11 @@ class sym_progress_measure_strong:
     #returns true if times out
     def empty(self, box, limit_time, infos):
         
-        infos["number of recursive calls"]+=1
+        infos["recursive calls"]+=1
         scope_init = self.list_in_box(box)
         
         if(scope_init == []):
-            infos["number of empty calls"]+=1
+            infos["empty calls"]+=1
             return(False)
         
         if(time.time() > limit_time):
@@ -121,12 +121,12 @@ class sym_progress_measure_strong:
         very_invalid = self.list_dest_not_in_box(box)
         
         if(very_invalid == []):
-            infos["number of calls with no lift"]+=1
+            infos["calls with no lift"]+=1
         
         while(very_invalid != []):
             i = util.pickrandom(very_invalid)
             self.lift(i)
-            infos["number of updates"]+=1
+            infos["updates"]+=1
             very_invalid=self.list_dest_not_in_box(box)
         
         if(self.accelerate(box)):

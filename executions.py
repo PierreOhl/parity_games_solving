@@ -45,7 +45,7 @@ class execution:
         invalid=phi.list_invalid()
         
         self.infos["algorithm"] = "Asymmtric PM for " + ["Eve", "Adam"][player]
-        self.infos["number of updates"]=0
+        self.infos["updates"]=0
 
         while(invalid != []):
             
@@ -55,7 +55,7 @@ class execution:
             
             i = util.pickrandom(invalid)
             phi.lift(i)
-            self.infos["number of updates"]+=1
+            self.infos["updates"]+=1
             invalid=phi.list_invalid()
         
         
@@ -75,10 +75,10 @@ class execution:
         
         #initializing info
         self.infos["algorithm"] = "Strong symmetric PM"
-        self.infos["number of updates"]=0
-        self.infos["number of recursive calls"]=0
-        self.infos["number of empty calls"]=0
-        self.infos["number of calls with no lift"] = 0
+        self.infos["updates"]=0
+        self.infos["recursive calls"]=0
+        self.infos["empty calls"]=0
+        self.infos["calls with no lift"] = 0
         
         
         #running main recursive procedure
@@ -93,7 +93,7 @@ class execution:
     #main recursive procedure for Zielonka algorithm
     def zielonka_solve(self, priority, vert_set, succ, time_limit):
         
-        self.infos["number of recursive calls"]+=1
+        self.infos["recursive calls"]+=1
         
         if(time.time() > time_limit):
             self.is_timeout = True
@@ -112,6 +112,8 @@ class execution:
             priority,
             player
         )
+        
+        self.infos["equivalent updates"] += len(attr_to_priority)
         
         #compute subgame
         sub_vert_set = vert_set.difference(attr_to_priority)
@@ -140,6 +142,8 @@ class execution:
             winning_for_opponent_in_subgame,
             1 - player
         )
+        
+        self.infos["equivalent updates"] += len(winning_for_opponent) - len(winning_for_opponent_in_subgame)
         
         #define rest of game
         rest_vert_set = vert_set.difference(winning_for_opponent)
@@ -186,7 +190,8 @@ class execution:
                     updated_succ[i].remove(edge)
         
         self.infos["algorithm"] = "Zielonka recursive"
-        self.infos["number of recursive calls"] = 0
+        self.infos["recursive calls"] = 0
+        self.infos["equivalent updates"] = 0
         
         #call to main recursive procedure
         solution_set = self.zielonka_solve( 

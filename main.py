@@ -74,7 +74,6 @@ exec = executions.execution(g, 10)
 exec.symmetric_lifting_strong()
 exec.printinfos()
 
-'''
 exec = executions.execution(g, 10)
 exec.asymmetric_lifting(0)
 exec.printinfos()
@@ -82,7 +81,6 @@ exec.printinfos()
 exec = executions.execution(g, 10)
 exec.asymmetric_lifting(1)
 exec.printinfos()
-'''
 
 exec = executions.execution(g, 10)
 exec.zielonka_algorithm()
