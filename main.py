@@ -83,7 +83,7 @@ exec_sym.printinfos()
 exec_ziel = executions.execution(g, 10)
 exec_ziel.zielonka_algorithm()
 exec_ziel.printinfos()
-    
+
 '''
 exec = executions.execution(g, 10)
 exec.asymmetric_lifting(0)
