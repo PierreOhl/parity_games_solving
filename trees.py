@@ -1,4 +1,4 @@
-
+from copy import deepcopy
 
 class node:
     ''' 
@@ -48,14 +48,17 @@ class box:
     '''
     a box is a pair of nodes.
     it should be that the both have same depth
-    or the first has one less
+    or the first has one less.
+    in the first case, player is 0, and player is
+    1 in the second case.
     '''
     def __init__(self, node0, node1):
-        self.pair=[node0, node1]
+        self.pair = [node0, node1]
         if(node0.height_of_tree != node1.height_of_tree):
             print("SHOULD NOT BE HERE 4")
         if(not(node0.depth in [node1.depth, node1.depth -1])):
             print("SHOULD NOT BE HERE 5")
+        self.player = node1.depth - node0.depth
     
     def print(self):
         print("BOX:")
@@ -72,10 +75,18 @@ class box:
                )
     
     def subboxes(self):
-        if(self.pair[0].depth == self.pair[1].depth): #expand first node
+        if(self.player == 0):
             return([box(self.pair[0], child1) for child1 in self.pair[1].children()])
         else:
             return([box(child0, self.pair[1]) for child0 in self.pair[0].children()])
+        
+    def parent(self):
+        rep = deepcopy(self)
+        if(rep.pair[self.player].value != []):
+            rep.pair[self.player].value.pop()
+            rep.pair[self.player].depth -= 1
+        return(rep)
+    
         
 class position:
     ''' 

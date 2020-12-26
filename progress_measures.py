@@ -42,6 +42,10 @@ class asym_progress_measure:
                 if(rep.smaller(pos)):
                     rep=pos 
             return(rep)
+        
+    def update_destination_of_predecessors(self,i):
+        for (predecessor, priority) in self.game.pred[i]:
+                        self.destination[predecessor] = self.compute_destination(predecessor)
 
     def lift(self,i):
         self.map[i] = self.destination[i]
@@ -88,52 +92,52 @@ class sym_progress_measure_strong:
     
     #accelerates, and returns true if it has accelerated
     def accelerate(self, box):
-        rep=False
-        for player in [0,1]:
-            scope=self.list_in_box(box)
-            if(all([self.pair[player].destination[i].smaller(self.pair[player].map[i]) for i in scope])):
-                n = box.pair[1-player].first_not_in_subtree()
-                rep=True
-                for i in scope:
-                    self.pair[1-player].map[i]=n
-                    #update destinations
-                    for (predecessor, priority) in self.game.pred[i]:
-                        self.pair[1-player].destination[predecessor] = self.pair[1-player].compute_destination(predecessor)
-                    
-        return(rep)
+        
+        all_valid_for_player = [
+            all([
+                self.pair[player].destination[i].smaller(self.pair[player].map[i])
+                for i in self.list_in_box(box)
+            ])
+            for player in [0,1]
+        ]
+        
+        if(all_valid_for_player[box.player]):
+            destination_node = box.pair[1 - box.player].first_not_in_subtree()
+            
+            for i in self.list_in_box(box):
+                self.pair[1 - box.player].map[i] = destination_node
+                self.pair[1 - box.player].update_destination_of_predecessors(i)
+        
+        if(any(all_valid_for_player)):
+            parent_box = box.parent()
+            destination_node = parent_box.pair[box.player].first_not_in_subtree()
+            
+            for i in self.list_in_box(parent_box):
+                self.pair[box.player].map[i] = destination_node
+                self.pair[box.player].update_destination_of_predecessors(i)
+        
+        return(any(all_valid_for_player))
     
     #returns true if times out
     def empty(self, box, limit_time, infos):
         
         infos["recursive calls"]+=1
-        scope_init = self.list_in_box(box)
-        
-        if(scope_init == []):
-            infos["empty calls"]+=1
-            return(False)
         
         if(time.time() > limit_time):
-            return(True)        
-        
-        if(self.accelerate(box)):
-            return(False)
+            return()
         
         very_invalid = self.list_dest_not_in_box(box)
-        
-        if(very_invalid == []):
-            infos["calls with no lift"]+=1
         
         while(very_invalid != []):
             i = util.pickrandom(very_invalid)
             self.lift(i)
             infos["updates"]+=1
-            very_invalid=self.list_dest_not_in_box(box)
+            very_invalid = self.list_dest_not_in_box(box) #TODO : speed up here
         
         if(self.accelerate(box)):
-            return(False)
+            return()
         
         for sub in box.subboxes():
-            if self.empty(sub, limit_time, infos):
-                return(True)
-        
-        return(False)
+            if(len(self.list_in_box(box))>0) :
+                self.empty(sub, limit_time, infos)
+            

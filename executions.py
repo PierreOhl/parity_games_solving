@@ -77,9 +77,7 @@ class execution:
         self.infos["algorithm"] = "Strong symmetric PM"
         self.infos["updates"]=0
         self.infos["recursive calls"]=0
-        self.infos["empty calls"]=0
-        self.infos["calls with no lift"] = 0
-        
+
         
         #running main recursive procedure
         self.is_timeout = phi.empty(b, start_time + self.timeout, self.infos)
