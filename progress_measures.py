@@ -90,35 +90,32 @@ class sym_progress_measure_strong:
         self.pair[0].lift(i)
         self.pair[1].lift(i)
     
-    #accelerates, and returns true if it has accelerated
+    #accelerates, updates all_for_opponent, and returns true if it has accelerated
     def accelerate(self, box):
+                
+        in_scope_initial = self.list_in_box(box)
         
-        all_valid_for_player = [
-            all([
-                self.pair[player].destination[i].smaller(self.pair[player].map[i])
-                for i in self.list_in_box(box)
-            ])
-            for player in [0,1]
-        ]
+        if(in_scope_initial == []):
+            return(True)
         
-        if(all_valid_for_player[box.player]):
-            destination_node = box.pair[1 - box.player].first_not_in_subtree()
-            
-            for i in self.list_in_box(box):
-                self.pair[1 - box.player].map[i] = destination_node
-                self.pair[1 - box.player].update_destination_of_predecessors(i)
+        for player in [0,1]:
+            if(
+                all([
+                    self.pair[player].destination[i].smaller(self.pair[player].map[i])
+                    for i in in_scope_initial
+                ])
+            ):
+                destination_node = box.pair[1-player].first_not_in_subtree()
+                
+                for i in in_scope_initial:
+                    self.pair[1-player].map[i] = destination_node
+                    self.pair[1-player].update_destination_of_predecessors(i)
+                    
+                return(True)
         
-        if(any(all_valid_for_player)):
-            parent_box = box.parent()
-            destination_node = parent_box.pair[box.player].first_not_in_subtree()
-            
-            for i in self.list_in_box(parent_box):
-                self.pair[box.player].map[i] = destination_node
-                self.pair[box.player].update_destination_of_predecessors(i)
+        return(False)
         
-        return(any(all_valid_for_player))
     
-    #returns true if times out
     def empty(self, box, limit_time, infos):
         
         infos["recursive calls"]+=1
@@ -138,6 +135,4 @@ class sym_progress_measure_strong:
             return()
         
         for sub in box.subboxes():
-            if(len(self.list_in_box(box))>0) :
-                self.empty(sub, limit_time, infos)
-            
+            self.empty(sub, limit_time, infos)

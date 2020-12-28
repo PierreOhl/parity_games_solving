@@ -40,15 +40,15 @@ class parity_game:
         file = open("instances/" + filename, 'r')
         n = int(file.readline())
         d = int(file.readline())
-        str_edges = file.readline()
-        str_player = file.readline()
-        player = list(map(int, str_player.split(", ")))
-        edges = str_edges.split("), (")
+        str_edges = file.readline().replace(" ", "")
+        str_player = file.readline().replace(" ", "")
+        player = list(map(int, str_player.split(",")))
+        edges = str_edges.split("),(")
         m = len(edges)
         edges[0] = edges[0][1:]
         edges[m-1] = edges[m-1][:-2]
         for i in range(m):
-            edges[i] = tuple(map(int, edges[i].split(", ")))        
+            edges[i] = tuple(map(int, edges[i].split(",")))        
         file.close()
         return(parity_game(n, d, edges, player))
         

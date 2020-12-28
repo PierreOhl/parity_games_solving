@@ -10,7 +10,7 @@ def generate_random(size, average_deg):
     edges=[]    
     for i in range(size):
         for j in range(size):
-            for p in range(1,size):
+            for p in range(1,size+1):
                 r = rand.randrange(invproba)
                 if(r==0):
                     edges.append((i,j,p))
@@ -77,16 +77,35 @@ edges = [(1, 3, 2), (2, 3, 3), (3, 1, 1), (3, 2, 1), (3, 3, 3)]
 g=games.parity_game(4,4,edges,[1,1,0,0])
 '''
 
-g = games.parity_game.fromfile("a_game_of_size_4")
+g = generate_random(50,3)
 
-exec_sym = executions.execution(g, 10)
+exec_sym = executions.execution(g, 1000)
 exec_sym.symmetric_lifting_strong()
 exec_sym.printinfos()
+print(exec_sym.solution)
 
 exec_ziel = executions.execution(g, 10)
 exec_ziel.zielonka_algorithm()
 exec_ziel.printinfos()
+print(exec_ziel.solution)
 
+
+'''
+while(True):
+    g=generate_random(4,2)
+
+    exec_sym = executions.execution(g, 10)
+    exec_sym.symmetric_lifting_strong()
+    exec_sym.printinfos()
+
+    exec_ziel = executions.execution(g, 10)
+    exec_ziel.zielonka_algorithm()
+    exec_ziel.printinfos()
+
+    if exec_ziel.solution != exec_sym.solution:
+        print(g.edges)
+        break
+'''
 '''
 exec = executions.execution(g, 10)
 exec.asymmetric_lifting(0)
