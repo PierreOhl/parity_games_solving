@@ -22,25 +22,16 @@ class execution:
         self.is_timeout = False
         self.solution = []
         self.infos={}
-        
-    def print(self):
-        print("EXECUTION:")
-        print("game description:\n")
-        self.game.print()
-        print("\ntimeout %2f" % self.timeout)
-        print("is timeout ", self.is_timeout)
-        print("solution ", self.solution)
-        print("infos:", self.infos)
-        
+                
     def printinfos(self):
         print("infos:", self.infos)
         
         
     #performs standard pm lifting from POV of given player
-    def asymmetric_lifting(self, player):
+    def asymmetric_lifting_standard(self, player):
         
         start_time=time.time()
-        phi = progress_measures.asym_progress_measure(self.game, player)
+        phi = progress_measures.asym_progress_measure_standard(self.game, player)
         
         invalid=phi.list_invalid()
         
@@ -58,20 +49,47 @@ class execution:
             self.infos["updates"]+=1
             invalid=phi.list_invalid()
         
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if not(phi.map[i].is_top)]
+        
+        
+    #performs gliding pm lifting from POV of given player
+    def asymmetric_lifting_gliding(self, player):
+        
+        start_time=time.time()
+        phi = progress_measures.asym_progress_measure_gliding(self.game, player)
+        
+        invalid = phi.list_invalid()
+        
+        self.infos["algorithm"] = "Gliding asymmetric PM for " + ["Eve", "Adam"][player]
+        self.infos["updates"]=0
+
+        while(invalid != []):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            i = util.pickrandom(invalid)
+            phi.lift(i)
+            self.infos["updates"]+=1
+            invalid=phi.list_invalid()
         
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if not(phi.map[i].is_top)]
         
     
+    
+    
     #performs symmetric "emptying-boxes" algorithm
     def symmetric_lifting_strong(self):
         
         start_time = time.time()
-        phi = progress_measures.sym_progress_measure_strong(self.game)  
+        phi = progress_measures.sym_progress_measure_global(self.game)  
         
         #initializing full product box
-        b = trees.box(trees.node(self.game.max_priority//2, self.game.size, []),
-                        trees.node(self.game.max_priority//2, self.game.size, []))
+        b = trees.box(trees.node_in_complete_tree(self.game.max_priority//2, self.game.size, []),
+                        trees.node_in_complete_tree(self.game.max_priority//2, self.game.size, []))
         
         #initializing info
         self.infos["algorithm"] = "Strong symmetric PM"

@@ -27,7 +27,7 @@ g=games.parity_game(2, 2, edges, [0,1])
 '''
 '''
 # a trivial game won by Eve 
-edges=[(0,1,2), (1,0,2), (1,1,1), (0,0,2)]
+edges=[(0,1,2), (1,0,1), (1,1,2), (0,0,1)]
 g=games.parity_game(2, 2, edges, [0,1])
 '''
 '''
@@ -76,19 +76,26 @@ g=games.parity_game(100,100, edges, [i<50 for i in range(100)])
 edges = [(1, 3, 2), (2, 3, 3), (3, 1, 1), (3, 2, 1), (3, 3, 3)]
 g=games.parity_game(4,4,edges,[1,1,0,0])
 '''
-
-g = generate_random(50,3)
-
-exec_sym = executions.execution(g, 1000)
-exec_sym.symmetric_lifting_strong()
-exec_sym.printinfos()
-print(exec_sym.solution)
+'''
+#a debugging instance of size 4
+edges=[(0, 0, 1), (0, 1, 1), (1, 1, 4), (1, 2, 1), (1, 3, 2), (2, 3, 1), (3, 1, 2)]
+g=games.parity_game(4, 4, edges, [1,1,0,0])
+'''
+'''
+#a one-vertex instance winning for Adam
+g = games.parity_game(1, 2, [(0,0,1)], [0])
+'''
+g = generate_random(100,3)
 
 exec_ziel = executions.execution(g, 10)
 exec_ziel.zielonka_algorithm()
 exec_ziel.printinfos()
 print(exec_ziel.solution)
 
+exec_asym = executions.execution(g, 10000)
+exec_asym.asymmetric_lifting_gliding(0)
+exec_asym.printinfos()
+print(exec_asym.solution)
 
 '''
 while(True):

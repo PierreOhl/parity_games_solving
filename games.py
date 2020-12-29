@@ -59,15 +59,4 @@ class parity_game:
             + str(self.player)[1:-1]
         )
         
-    def print(self):
-        print("PARITY GAME:")
-        print("game size: ", self.size)
-        print("maximal priority", self.max_priority)
-        print("number of edges", len(self.edges))
-        print("set of edges:")
-        print(self.edges)
-        print("list of successors:")
-        for i in range(self.size):
-            print("successors of state %d: (index, priority)" % i)
-            print(self.succ[i])
-        print("players:", self.player)
+    

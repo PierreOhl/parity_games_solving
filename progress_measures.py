@@ -2,12 +2,14 @@ import games
 import trees
 import time
 import util
+from copy import deepcopy
 
-class asym_progress_measure:
+class asym_progress_measure_standard:
     ''' 
-    asym_progress_measure:
+    asym_progress_measure_standard:
         - game is a parity game
-        - map is a list of positions of size n
+        - map is a list of positions of size game.size 
+        in complete tree of size degree game.size
         - player is in O,1
         - height = height of tree -1
     ''' 
@@ -16,18 +18,12 @@ class asym_progress_measure:
         self.game = game
         self.player = player
         self.height = game.max_priority // 2
-        self.map = [trees.position(self.height, game.size) for i in range(game.size)]
+        self.map = [trees.position_in_complete_tree(self.height, game.size) for i in range(game.size)]
         self.destination = [self.compute_destination(i) for i in range(game.size)]
             
-    def print(self):
-        print("ASYMETRIC PM:")
-        print("height %d, size %d " %(self.height, self.game.size))
-        for i in range(self.game.size):
-            print("position of %d-th node:" %i)
-            self.map[i].print()
 
     def compute_destination(self, i):
-        rep = trees.position(self.height, self.game.size)
+        rep = trees.position_in_complete_tree(self.height, self.game.size)
         pos_list=[self.map[suc[0]].min_source_for_valid_edge(self.player, suc[1]) for suc in self.game.succ[i]] #suc[0]=successor, suc[1]=priority
         if self.game.player[i] == self.player:
             #compute a min
@@ -45,7 +41,7 @@ class asym_progress_measure:
         
     def update_destination_of_predecessors(self,i):
         for (predecessor, priority) in self.game.pred[i]:
-                        self.destination[predecessor] = self.compute_destination(predecessor)
+            self.destination[predecessor] = self.compute_destination(predecessor)
 
     def lift(self,i):
         self.map[i] = self.destination[i]
@@ -55,24 +51,105 @@ class asym_progress_measure:
     def list_invalid(self):
         return([i for i in range(self.game.size) if not(self.destination[i].smaller(self.map[i]))])
     
-
-class sym_progress_measure_strong:
+class asym_progress_measure_gliding:
     ''' 
-    sym_progress_measure_strong:
+    asym_progress_measure_gliding:
+        - game is a parity game
+        - map is a list of positions of size n in infinite complete tree
+        - player is in O,1
+        - height = height of tree -1
+        - partition is a util.partition that regroups vertices mapped to same node
+    ''' 
+    
+    def __init__(self, game, player):
+        self.game = game
+        self.player = player
+        self.height = game.max_priority // 2
+        self.map = [trees.position_in_infinite_tree(self.height) for i in range(game.size)]
+        self.destination = [self.compute_destination(i) for i in range(game.size)]
+        self.partition = util.partition_plus_node_data(game.size, trees.position_in_infinite_tree(self.height))
+        
+    def compute_destination(self, i):
+        rep = trees.position_in_infinite_tree(self.height)
+        pos_list=[self.map[suc[0]].min_source_for_valid_edge(self.player, suc[1]) for suc in self.game.succ[i]] #suc[0]=successor, suc[1]=priority
+        if self.game.player[i] == self.player:
+            #compute a min
+            rep.set_to_top()
+            for pos in pos_list:
+                if(pos.smaller(rep)):
+                    rep=pos 
+            return(rep)            
+        else :
+            #compute a max
+            for pos in pos_list:
+                if(rep.smaller(pos)):
+                    rep=pos 
+            return(rep)
+        
+    
+    def update_destination_of_predecessors(self,i):
+        for (predecessor, priority) in self.game.pred[i]:
+            self.destination[predecessor] = self.compute_destination(predecessor)
+            
+    
+    def lift(self,i):
+        departure_node = deepcopy(self.map[i])
+        
+        #lift i
+        self.map[i] = self.destination[i]
+        for (predecessor, priority) in self.game.pred[i] :
+            self.destination[predecessor] = self.compute_destination(predecessor)
+
+        #move returns true if i was the last in its subset
+        if(self.partition.move(i, self.map[i])):
+            ########### GLIDING #############
+            
+            #count largest prefix of zeros in departure_node
+            prefix_of_zeros_size = 0
+            
+            #(using -1 below is intentionnal, not a mistake)
+            while(prefix_of_zeros_size < self.height -1 and departure_node.value[prefix_of_zeros_size] == 0):
+                prefix_of_zeros_size += 1
+            
+            #computing arrival
+            arrival_of_glide = trees.position_in_infinite_tree(self.height)
+            if(prefix_of_zeros_size == self.height - 1):
+                arrival_of_glide.set_to_top()
+            else:
+                arrival_of_glide.value[prefix_of_zeros_size + 1] = departure_node.value[prefix_of_zeros_size + 1] + 1
+                for k in range(prefix_of_zeros_size + 2, self.height):
+                    arrival_of_glide.value[k] = departure_node.value[k]
+            
+            #updating the right vertices
+            for vert in range(self.game.size):
+                k = prefix_of_zeros_size
+                should_glide = (self.map[vert].value[k] >= departure_node.value[k])
+                k += 1
+                
+                while(should_glide and k < self.height):
+                    should_glide = should_glide and (self.map[vert].value[k] >= departure_node.value[k])
+                    k+=1
+                
+                if(should_glide):
+                    self.map[vert] = deepcopy(arrival_of_glide)
+                    for (predecessor, priority) in self.game.pred[vert] :
+                        self.destination[predecessor] = self.compute_destination(predecessor)
+                    
+                    self.partition.move(vert, arrival_of_glide)
+            
+    def list_invalid(self):
+        return([i for i in range(self.game.size) if not(self.destination[i].smaller(self.map[i]))])
+
+class sym_progress_measure_global:
+    ''' 
+    sym_progress_measure_global:
     - game is a parity game
     - pair : tuple of two asym progress measures, one for each player
     '''
     
     def __init__(self, game):
         self.game = game
-        self.pair = [asym_progress_measure(game,0), asym_progress_measure(game, 1)]
-    
-    def print(self):
-        print("SYMMETRIC PM:")
-        print("Eve PM:")
-        self.pair[0].print()
-        print("\n \n Adam PM:")
-        self.pair[1].print()
+        self.pair = [asym_progress_measure_standard(game, 0), asym_progress_measure_standard(game, 1)]
     
     def pair_of_positions(self, i):
         return([self.pair[0].map[i], self.pair[1].map[i]])
@@ -136,3 +213,18 @@ class sym_progress_measure_strong:
         
         for sub in box.subboxes():
             self.empty(sub, limit_time, infos)
+    
+
+    
+            
+class sym_progress_measure_local():
+    '''
+    sym_progress_measure_local:
+    - game is a parity_game
+    - pair is a pair of asym_progress_measures
+    '''
+    def __init__(self, game):
+        self.game = game
+        self.pair = [asym_progress_measure(game, 0), asym_progress_measure(game, 1)]
+        
+    
