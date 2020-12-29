@@ -85,17 +85,23 @@ g=games.parity_game(4, 4, edges, [1,1,0,0])
 #a one-vertex instance winning for Adam
 g = games.parity_game(1, 2, [(0,0,1)], [0])
 '''
-g = generate_random(100,3)
+g = games.parity_game.hard_for_zielonka(16)
 
 exec_ziel = executions.execution(g, 10)
 exec_ziel.zielonka_algorithm()
 exec_ziel.printinfos()
 print(exec_ziel.solution)
 
-exec_asym = executions.execution(g, 10000)
+exec_asym = executions.execution(g, 10)
 exec_asym.asymmetric_lifting_gliding(0)
 exec_asym.printinfos()
 print(exec_asym.solution)
+
+exec_sym = executions.execution(g, 10)
+exec_sym.symmetric_lifting_strong()
+exec_sym.printinfos()
+print(exec_sym.solution)
+
 
 '''
 while(True):

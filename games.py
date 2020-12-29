@@ -59,4 +59,24 @@ class parity_game:
             + str(self.player)[1:-1]
         )
         
-    
+    #builds a hard example for Zielonka
+    @classmethod
+    def hard_for_zielonka(cls, even_top_priority):
+        width = 4
+        size = width * (even_top_priority - 1)
+        edges = []
+        for h in range(even_top_priority-1):
+            for w in range(width -1):
+                edges.append((h * width + w + 1, h * width + w, h + 1))
+                if(w % 2 == 1):
+                    edges.append((h * width + w, h * width + w + 1, h + 2))
+                else:
+                    edges.append((h * width + w, h * width + w + 1, h + 1))
+        for h in range(even_top_priority - 4):
+            edges.append((h * width + width - 1, (h+2) * width, h+1))
+        for h in range(1, even_top_priority-1):
+            for w in range(width -1):
+                if w%2 == 0:
+                    edges.append((h * width + w, (h-1) * width + w, h+1))
+        player = [(i // width + i + 1) % 2 for i in range(size)]
+        return(parity_game(size, even_top_priority, edges, player))
