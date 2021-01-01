@@ -155,7 +155,7 @@ class sym_progress_measure_global:
         return([self.pair[0].map[i], self.pair[1].map[i]])
     
     def destination(self, i):
-        return((self.pair[0].destination[i], self.pair[1].destination[i])) #todo : change to tuple here
+        return((self.pair[0].destination[i], self.pair[1].destination[i]))
     
     def list_in_box(self, box):
         return([i for i in range(self.game.size) if box.in_box(self.pair_of_positions(i))])
@@ -217,14 +217,96 @@ class sym_progress_measure_global:
 
     
             
-class sym_progress_measure_local():
+class sym_progress_measure_local:
     '''
     sym_progress_measure_local:
     - game is a parity_game
-    - pair is a pair of asym_progress_measures
+    - pair is a pair of progress measures in infinite tree
+    - local_destination is a list of size game.size, for each
+    vertex i, destination[i] is a list of size game.max_priority, 
+    giving the local destination of i in each scope.
     '''
     def __init__(self, game):
         self.game = game
-        self.pair = [asym_progress_measure(game, 0), asym_progress_measure(game, 1)]
+        self.height = game.max_priority // 2
+        self.pair = (
+            [trees.position_in_infinite_tree(self.height) for i in range(game.size)],
+            [trees.position_in_infinite_tree(self.height) for i in range(game.size)]
+        )
         
+    def pair_of_positions(self, i):
+        return((self.pair[0][i], self.pair[1][i]))
+    
+    def update(self, i, dest):
+        '''
+        updates the progress measures.
+        dest is a couple of positions
+        '''
+        for player in (0,1):
+            self.pair[player][i] = dest[player]
+    
+    def list_in_box(self, box):
+        return([i for i in range(self.game.size) if box.in_box(self.pair_of_positions(i))])
+    
+    #computes local destination of node wrt given box
+    def compute_destination(self, i, box):
+        in_box = self.list_in_box(box)
+        rep = []
+        for player in (0,1):
+            #we also compare to upper, should not be needed
+            pos_list=[self.pair[player][suc[0]].min_source_for_valid_edge_with_bound(player, suc[1], box.pair[player].first_not_in_subtree()) for suc in self.game.succ[i] if suc[0] in in_box] #suc[0]=successor, suc[1]=priority
+            if self.game.player[i] == player:
+                #compute a min
+                rep_player = box.pair[player].first_not_in_subtree()
+                for pos in pos_list:
+                    if(pos.smaller(rep_player)):
+                        rep_player = pos
+                rep.append(rep_player)
+            else :
+                #compute a max
+                rep_player = trees.position_in_infinite_tree(self.height)
+                for pos in pos_list:
+                    if(rep_player.smaller(pos)):
+                        rep_player = pos
+                rep.append(rep_player)
+        return(tuple(rep))
+    
+    def first_non_empty_child(self, box):            
+        rep = deepcopy(box)
+        if(box.is_global):
+            rep.is_global = False
+            return(rep)
+        l = 0
+        rep.player = 1 - rep.player
+        rep.pair[1 - box.player] = box.pair[1- box.player].child(l)
+        while(self.list_in_box(rep) == []):
+            l = l + 1
+            rep.pair[1 - box.player] = box.pair[1- box.player].child(l)
+        return(rep)
+    
+    def lift(self):
+        parent_box = trees.box.init_global_box_for_infinite_tree(self.height)
+        while True:
+            child_box = self.first_non_empty_child(parent_box)
+            #first, try a lift. At the same time, we check for uniform validity for each player
+            all_valid = [True, True]
+            for i in self.list_in_box(child_box):
+                dest = self.compute_destination(i, parent_box)
+                if not(child_box.in_box(dest)):
+                    self.update(i, dest)
+                    return("updates")
+                for player in (0,1):
+                    all_valid[player] = all_valid[player] and dest[player].smaller(self.pair[player][i])
+            
+            #accelerate if possible
+            for player in (0,1):
+                if all_valid[player]:
+                    for i in self.list_in_box(child_box):
+                        self.pair[1-player][i] = child_box.pair[1-player].first_not_in_subtree()
+                    return("accelerations")
+            
+            #otherwise, go deeper
+            parent_box = child_box 
+            
+    
     

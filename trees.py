@@ -26,7 +26,7 @@ class node_in_infinite_tree:
         return(l == self.depth)
     
     def first_not_in_subtree(self):
-        rep = position_in_infinite_tree(self.height)
+        rep = position_in_infinite_tree(self.height_of_tree)
         if(self.depth == 0):
             rep.set_to_top()
         else:
@@ -34,6 +34,10 @@ class node_in_infinite_tree:
                 rep.value[self.height_of_tree - l - 1] = self.value[l]
             rep.value[self.height_of_tree - self.depth] +=1
         return(rep)
+    
+    #return i-th child of node
+    def child(self, i):
+        return(node_in_infinite_tree(self.height_of_tree, self.value + [i]))
     
     
 class node_in_complete_tree:
@@ -82,6 +86,9 @@ class box:
     or the first has one less.
     in the first case, player is 0, and player is
     1 in the second case.
+    
+    there is a special box, "global", which contains
+    the two tops. It is given by attribute "is_global"
     '''
     def __init__(self, node0, node1):
         self.pair = [node0, node1]
@@ -90,13 +97,26 @@ class box:
         if(not(node0.depth in [node1.depth, node1.depth -1])):
             print("SHOULD NOT BE HERE 5")
         self.player = node1.depth - node0.depth
+        self.is_global = False
+    
+    @classmethod
+    def init_global_box_for_infinite_tree(cls, height):
+        rep = box(node_in_infinite_tree(height, []), node_in_infinite_tree(height, []))
+        rep.is_global = True
+        return(rep)
+    
         
     def in_box(self, pair_of_pos):
+        
+        if(self.is_global):
+            return(True)
+                
         return(    self.pair[0].in_subtree(pair_of_pos[0]) 
                and self.pair[1].in_subtree(pair_of_pos[1])
                and not(pair_of_pos[0].is_top)
                and not(pair_of_pos[1].is_top)
                )
+        
     
     def subboxes(self):
         if(self.player == 0):
@@ -161,6 +181,26 @@ class position_in_infinite_tree:
             if(priority%2 != player):
                 rep.value[h] += 1
             return(rep)
+    
+    def min_source_for_valid_edge_with_bound(self, player, priority, upper_bound):
+        '''
+            returns the smallest position that has a valid edge
+            with given priority towards self, in player's semantic,
+            which is smaller than bound.
+        '''
+        if self.is_top:
+            return(upper_bound)
+        else:
+            rep = position_in_infinite_tree(self.height)
+            h=(priority-player)//2
+            for i in range(h,self.height):
+                rep.value[i]=self.value[i]
+            if(priority%2 != player):
+                rep.value[h] += 1
+            if rep.smaller(upper_bound):
+                return(rep)
+            else:
+                return(upper_bound)    
 
     
 class position_in_complete_tree:

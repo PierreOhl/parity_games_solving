@@ -96,7 +96,6 @@ class execution:
         self.infos["updates"]=0
         self.infos["recursive calls"]=0
 
-        
         #running main recursive procedure
         self.is_timeout = phi.empty(b, start_time + self.timeout, self.infos)
         
@@ -199,6 +198,9 @@ class execution:
                 player
             )
         remaining_vert = {i for i in range(self.game.size) if all([i not in player_attr_to_opponent_sink[pl] for pl in [0,1]])}
+        
+        self.infos["equivalent updates"] = self.game.size - len(remaining_vert)
+        
         updated_succ = deepcopy(self.game.succ)
         for i in remaining_vert:
             for edge in self.game.succ[i]:
@@ -207,7 +209,6 @@ class execution:
         
         self.infos["algorithm"] = "Zielonka recursive"
         self.infos["recursive calls"] = 0
-        self.infos["equivalent updates"] = 0
         
         #call to main recursive procedure
         solution_set = self.zielonka_solve( 
@@ -219,3 +220,31 @@ class execution:
         
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if i in solution_set or i in player_attr_to_opponent_sink[0]]
+        
+    
+    def symmetric_local(self):
+        
+        self.infos["algorithm"] = "Symmetric with local validity"
+        self.infos["updates"] = 0
+        self.infos["accelerations"] = 0
+        
+        start_time = time.time()
+        
+        phi = progress_measures.sym_progress_measure_local(self.game)
+        
+        outer_box = trees.box(
+            trees.node_in_infinite_tree(self.game.max_priority // 2, []),
+            trees.node_in_infinite_tree(self.game.max_priority // 2, [])
+        )
+        
+        while(phi.list_in_box(outer_box) != []):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            s = phi.lift()
+            self.infos[s] += 1
+        
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if not(phi.pair[0][i].is_top)]

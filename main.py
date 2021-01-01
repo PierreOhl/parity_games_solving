@@ -19,7 +19,6 @@ def generate_random(size, average_deg):
     return(rep)
 
 
-
 '''
 # a trivial game won by Adam
 edges=[(0,1,2), (1,0,2), (1,1,1)]
@@ -78,37 +77,41 @@ g=games.parity_game(4,4,edges,[1,1,0,0])
 '''
 '''
 #a debugging instance of size 4
-edges=[(0, 0, 1), (0, 1, 1), (1, 1, 4), (1, 2, 1), (1, 3, 2), (2, 3, 1), (3, 1, 2)]
+edges=[(0, 2, 1), (0, 3, 2), (1, 2, 1), (1, 3, 3), (2, 1, 2), (3, 0, 1), (3, 3, 1)]
 g=games.parity_game(4, 4, edges, [1,1,0,0])
 '''
+
+# an instance of size 3 where local algorithm loops
+edges = [(0, 1, 2), (1, 2, 3), (2, 2, 1), (2, 0, 1)]
+g = games.parity_game(3, 4, edges, [0,0,0])
+
+
 '''
 #a one-vertex instance winning for Adam
 g = games.parity_game(1, 2, [(0,0,1)], [0])
 '''
-g = games.parity_game.hard_for_zielonka(16)
 
 exec_ziel = executions.execution(g, 10)
 exec_ziel.zielonka_algorithm()
 exec_ziel.printinfos()
 print(exec_ziel.solution)
 
-exec_asym = executions.execution(g, 10)
-exec_asym.asymmetric_lifting_gliding(0)
-exec_asym.printinfos()
-print(exec_asym.solution)
+exec_glid = executions.execution(g, 10)
+exec_glid.asymmetric_lifting_gliding(0)
+exec_glid.printinfos()
+print(exec_glid.solution)
 
 exec_sym = executions.execution(g, 10)
-exec_sym.symmetric_lifting_strong()
+exec_sym.symmetric_local()
 exec_sym.printinfos()
 print(exec_sym.solution)
-
 
 '''
 while(True):
     g=generate_random(4,2)
 
     exec_sym = executions.execution(g, 10)
-    exec_sym.symmetric_lifting_strong()
+    exec_sym.symmetric_local()
     exec_sym.printinfos()
 
     exec_ziel = executions.execution(g, 10)
@@ -118,13 +121,5 @@ while(True):
     if exec_ziel.solution != exec_sym.solution:
         print(g.edges)
         break
-'''
-'''
-exec = executions.execution(g, 10)
-exec.asymmetric_lifting(0)
-exec.printinfos()
 
-exec = executions.execution(g, 10)
-exec.asymmetric_lifting(1)
-exec.printinfos()
 '''
