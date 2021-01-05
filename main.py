@@ -112,12 +112,17 @@ g=games.parity_game(40, 41, edges, [i< 20 for i in range(40)])
 edges=[(0, 2, 7), (1, 4, 7), (2, 0, 9), (3, 7, 7), (4, 6, 3), (5, 7, 2), (6, 4, 2), (7, 8, 6), (8, 3, 10), (9, 4, 5), (0, 2, 8), (1, 2, 5), (2, 3, 10), (3, 6, 5), (3, 9, 9), (4, 0, 5), (4, 3, 11), (4, 4, 2), (4, 5, 8), (4, 6, 2), (4, 7, 9), (5, 8, 8), (6, 8, 3), (7, 3, 11), (7, 6, 8), (7, 8, 2), (8, 2, 8), (8, 3, 8), (8, 8, 11), (8, 8, 8), (9, 1, 11), (9, 1, 6), (9, 3, 10)]
 g = games.parity_game(10, 11, edges, [i<5 for i in range(10)])
 '''
-
+'''
  #debug3
 edges = [(0, 6, 7), (1, 2, 3), (3, 6, 8), (4, 7, 4), (5, 3, 3), (7, 0, 7), (0, 5, 9), (0, 7, 8), (1, 6, 3), (2, 4, 9), (2, 4, 3), (2, 6, 2), (3, 0, 2), (4, 5, 7), (5, 2, 5), (5, 6, 9), (5, 7, 3), (6, 2, 9), (6, 4, 2), (6, 7, 2), (7, 2, 2)]
 g = games.parity_game(8, 9, edges, [i<4 for  i in range(8)])
-
-
+'''
+'''
+#debug 4
+edges = [(1, 3, 5), (3, 0, 2), (0, 1, 3), (1, 2, 3), (2, 0, 4), (2, 3, 2), (3, 1, 2), (3, 2, 2)]
+g = games.parity_game(4,5,edges, [1,1,0,0])
+'''
+'''
 exec_ziel = executions.execution(g.to_max_parity(), 10)
 exec_ziel.zielonka_algorithm()
 exec_ziel.printinfos()
@@ -131,22 +136,24 @@ exec_sym = executions.execution(g, 10000)
 exec_sym.symmetric_no_reset()
 exec_sym.printinfos()
 print(exec_sym.solution)
-
 '''
+
 while(True):
-    g=generate_random(8,2)
+    g=generate_random(200,2)
+    
+    #print(g.to_min_parity().edges)
+    print()
     
     exec_sym = executions.execution(g.to_min_parity(), 10)
     exec_sym.symmetric_no_reset()
-    #exec_sym.printinfos()
+    exec_sym.printinfos()
 
     exec_ziel = executions.execution(g, 10)
     exec_ziel.zielonka_algorithm()
-    #exec_ziel.printinfos()
+    exec_ziel.printinfos()
 
-    if(exec_sym.solution != list(exec_ziel.solution)):
+    if(exec_sym.solution != list(exec_ziel.solution) and not(exec_sym.is_timeout) and not(exec_ziel.is_timeout)):
         print("probleme")
         print(g.to_min_parity().edges)
         print(exec_sym.solution, exec_ziel.solution)
         break
-'''

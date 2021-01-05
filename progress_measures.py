@@ -359,21 +359,13 @@ class sym_progress_measure_no_reset:
         #updating dest_of_outgoing_edge[i]
         for index_of_edge, (succ_vert, p) in enumerate(self.game.succ[i]):
             for h in range(p+1):
-                self.dest_of_outgoing_edge[i][index_of_edge][h] = max(
-                    self.map[i][h],
-                    self.map[succ_vert][h] + (h==p)
-                )
-            for h in range(p+1, self.height):
-                self.dest_of_outgoing_edge[i][index_of_edge][h] = self.map[i][h]
+                self.dest_of_outgoing_edge[i][index_of_edge][h] = self.map[succ_vert][h] + (h==p)
         #updating validity
         self.update_validity(i)
         #updating it for predecessors
         for (pred_vert, p, index_of_edge) in self.game.pred[i]:
             for h in range(p+1):
-                self.dest_of_outgoing_edge[pred_vert][index_of_edge][h] = max(
-                    self.dest_of_outgoing_edge[pred_vert][index_of_edge][h],
-                    self.map[i][h] + (h==p)
-                )
+                self.dest_of_outgoing_edge[pred_vert][index_of_edge][h] = self.map[i][h] + (h==p)
             self.update_validity(pred_vert)
     
     def update_validity(self, i):
@@ -392,6 +384,8 @@ class sym_progress_measure_no_reset:
                 while(j<self.height):
                     if(self.map[i][j] < self.dest_of_outgoing_edge[i][e][j]):
                         break
+                    if(self.map[i][j] > self.dest_of_outgoing_edge[i][e][j]):
+                        return(True)
                     j+=2
                 if(j >= self.height):
                     return(True)
@@ -402,6 +396,8 @@ class sym_progress_measure_no_reset:
                 while(j<self.height):
                     if(self.map[i][j] < self.dest_of_outgoing_edge[i][e][j]):
                         return(False)
+                    if(self.map[i][j] > self.dest_of_outgoing_edge[i][e][j]):
+                        break
                     j+=2
             return(True)
     
@@ -418,7 +414,11 @@ class sym_progress_measure_no_reset:
                 if self.game.player[i] == priority_of_box % 2:
                     for e in range(len(self.game.succ[i])):
                         if(self.dest_of_outgoing_edge[i][e][priority_of_box] > box[priority_of_box]):
-                            self.map[i] = deepcopy(self.dest_of_outgoing_edge[i][e])
+                            for h in range(self.height):
+                                self.map[i][h] = max(
+                                    self.map[i][h],
+                                    self.dest_of_outgoing_edge[i][e][h]
+                                )
                             self.update_info(i)
                             return("updates")
                 else:
