@@ -273,6 +273,7 @@ class execution:
             
             self.infos[s] += 1
 
+        self.infos["max number"] = max([max(phi.map[i]) for i in range(self.game.size)])
         
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if phi.map[i][0] == 1]

@@ -437,7 +437,7 @@ class sym_progress_measure_no_reset:
                         self.update_info(i)
                         return("updates")
             
-            #try to accelerate  (asymmetric version: only for p+1 % 2)
+            #try to accelerate  (asymmetric version: only for p+1 % 2), maybe change that
             if all([self.is_valid[i][(priority_of_box+1) % 2] for i in in_box]):
                 if(priority_of_box == 0):
                     return("terminate")
