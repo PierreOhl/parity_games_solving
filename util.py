@@ -96,3 +96,14 @@ class partition_plus_node_data:
     
     def value_of(self, i):
         return(self.values[self.index[i]])
+    
+    
+#returns true iff list1 is a prefix of list2
+#assuming list1 is shorter than list2 
+def is_prefix(list1, list2):
+    ind=0
+    while(ind < len(list1)):
+        if(list1[ind] != list2[ind]):
+            return(False)
+        ind+=1
+    return(True)

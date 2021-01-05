@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 class parity_game:
     ''' 
     jeu de parité :
@@ -14,6 +16,10 @@ class parity_game:
             
             - succ table des successeurs (redondant)
                 -> succ[i] est une liste de tuples (sommet', priorité)
+            
+            - pred table des successeurs (redondant)
+                -> pred[i] est une liste de triplets (sommet, priorité, ind),
+                où ind est l'indice dans succ[sommet] de l'arrête (i, sommet, priorité)
                 
             - player est une liste de 0,1 de taille n
     '''
@@ -27,8 +33,35 @@ class parity_game:
         self.succ = [[] for i in range(n)]
         self.pred = [[] for i in range(n)]
         for t in edges:
+            self.pred[t[1]].append((t[0],t[2], len(self.succ[t[0]])))
             self.succ[t[0]].append((t[1],t[2]))
-            self.pred[t[1]].append((t[0],t[2]))
+
+        
+        
+    #returns games in min parity semantic, reversing and turning
+    # 1,..., d into 2,..., d+1 (leaving room in 0,1 for "tops")
+    def to_min_parity(self):
+        edges = deepcopy(self.edges)
+        for e in range(self.number_edges):
+            edges[e] =(
+                edges[e][0],
+                edges[e][1],
+                self.max_priority - edges[e][2] + 2
+            )
+        return(parity_game(self.size, self.max_priority + 1, edges, self.player))
+
+    #returns game in max partity semantinc, reversing and turning
+    # 2,..., d+1 into 1,..., d
+    def to_max_parity(self):
+        edges = deepcopy(self.edges)
+        for e in range(self.number_edges):
+            edges[e] =(
+                edges[e][0],
+                edges[e][1],
+                self.max_priority - edges[e][2] + 1
+            )
+        return(parity_game(self.size, self.max_priority - 1, edges, self.player))
+        
             
     def save_to_file(self, name):
         file = open("instances/"+name, 'w')

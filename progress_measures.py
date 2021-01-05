@@ -97,7 +97,7 @@ class asym_progress_measure_gliding:
         
         #lift i
         self.map[i] = self.destination[i]
-        for (predecessor, priority) in self.game.pred[i] :
+        for (predecessor, _, _) in self.game.pred[i] :
             self.destination[predecessor] = self.compute_destination(predecessor)
 
         #move returns true if i was the last in its subset
@@ -132,7 +132,7 @@ class asym_progress_measure_gliding:
                 
                 if(should_glide):
                     self.map[vert] = deepcopy(arrival_of_glide)
-                    for (predecessor, priority) in self.game.pred[vert] :
+                    for (predecessor, _, _) in self.game.pred[vert] :
                         self.destination[predecessor] = self.compute_destination(predecessor)
                     
                     self.partition.move(vert, arrival_of_glide)
@@ -215,16 +215,11 @@ class sym_progress_measure_global:
             self.empty(sub, limit_time, infos)
     
 
-    
-            
 class sym_progress_measure_local:
     '''
     sym_progress_measure_local:
     - game is a parity_game
     - pair is a pair of progress measures in infinite tree
-    - local_destination is a list of size game.size, for each
-    vertex i, destination[i] is a list of size game.max_priority, 
-    giving the local destination of i in each scope.
     '''
     def __init__(self, game):
         self.game = game
@@ -288,25 +283,173 @@ class sym_progress_measure_local:
         parent_box = trees.box.init_global_box_for_infinite_tree(self.height)
         while True:
             child_box = self.first_non_empty_child(parent_box)
-            #first, try a lift. At the same time, we check for uniform validity for each player
-            all_valid = [True, True]
-            for i in self.list_in_box(child_box):
+            in_child_box = self.list_in_box(child_box)
+            #first, try a lift. 
+            for i in in_child_box :
                 dest = self.compute_destination(i, parent_box)
                 if not(child_box.in_box(dest)):
                     self.update(i, dest)
                     return("updates")
-                for player in (0,1):
-                    all_valid[player] = all_valid[player] and dest[player].smaller(self.pair[player][i])
             
+            #compute local validity
+            all_valid = [True, True]
+            for i in in_child_box :
+                local_dest = self.compute_destination(i, child_box)
+                for player in (0,1):
+                    all_valid[player] = all_valid[player] and local_dest[player].smaller(self.pair[player][i])
+            
+            #try a big acceleration
+            if all_valid[parent_box.player]:
+                for i in self.list_in_box(parent_box):
+                    self.pair[1 - parent_box.player][i] = parent_box.pair[1 - parent_box.player].first_not_in_subtree()
+                return("accelerations")
+            
+            #try a small acceleration
+            if all_valid[child_box.player]:
+                for i in self.list_in_box(child_box):
+                    self.pair[1 - child_box.player][i] = child_box.pair[1 - child_box.player].first_not_in_subtree()
+                return("accelerations")
+            
+            
+            ''' Uncomment for only small acceleration. 
             #accelerate if possible
             for player in (0,1):
                 if all_valid[player]:
                     for i in self.list_in_box(child_box):
                         self.pair[1-player][i] = child_box.pair[1-player].first_not_in_subtree()
                     return("accelerations")
+            '''
+            
             
             #otherwise, go deeper
             parent_box = child_box 
             
+
+class sym_progress_measure_no_reset:
+    '''
+    progress measure with no reset:
+    - it is defined in min-parity semantic (with min >= 2)
+    - it is defined in infinite tree
+    - in a lift, every coordinate is always increased
+    - same for accelerations
+    '''
     
+    def __init__(self, game):
+        self.game = game
+        self.height = game.max_priority + 1
+        self.map = [
+            [0 for h in range(self.height)]
+            for i in range(game.size)
+        ]
+        self.dest_of_outgoing_edge = [
+            [
+                [int(h == p) for h in range(self.height)] #this has just a one at the right position
+                for (j, p) in self.game.succ[i]
+            ]
+            for i in range(game.size)
+        ]
+        self.is_valid = [(True,True) for i in range(game.size)]
+        for i in range(game.size):
+            self.update_validity(i)
     
+
+    #update dest_of_outgoing_edge for i and predecessors edges of i
+    #and validity of i and of predecessors
+    def update_info(self, i):
+        #updating dest_of_outgoing_edge[i]
+        for index_of_edge, (succ_vert, p) in enumerate(self.game.succ[i]):
+            for h in range(p+1):
+                self.dest_of_outgoing_edge[i][index_of_edge][h] = max(
+                    self.map[i][h],
+                    self.map[succ_vert][h] + (h==p)
+                )
+            for h in range(p+1, self.height):
+                self.dest_of_outgoing_edge[i][index_of_edge][h] = self.map[i][h]
+        #updating validity
+        self.update_validity(i)
+        #updating it for predecessors
+        for (pred_vert, p, index_of_edge) in self.game.pred[i]:
+            for h in range(p+1):
+                self.dest_of_outgoing_edge[pred_vert][index_of_edge][h] = max(
+                    self.dest_of_outgoing_edge[pred_vert][index_of_edge][h],
+                    self.map[i][h] + (h==p)
+                )
+            self.update_validity(pred_vert)
+    
+    def update_validity(self, i):
+        self.is_valid[i]=(
+            self.compute_validity(i,0),
+            self.compute_validity(i,1)
+        )
+    
+    def list_in_box(self, box):
+        return([i for i in range(self.game.size) if util.is_prefix(box, self.map[i])])
+
+    def compute_validity(self, i, player):
+        if(self.game.player[i] == player):#return True if there is a valid outgoing edge
+            for e in range(len(self.game.succ[i])):
+                j=1-player
+                while(j<self.height):
+                    if(self.map[i][j] < self.dest_of_outgoing_edge[i][e][j]):
+                        break
+                    j+=2
+                if(j >= self.height):
+                    return(True)
+            return(False)
+        else: #return True if all outgoing edges valid
+            for e in range(len(self.game.succ[i])):
+                j=1-player
+                while(j<self.height):
+                    if(self.map[i][j] < self.dest_of_outgoing_edge[i][e][j]):
+                        return(False)
+                    j+=2
+            return(True)
+    
+    #performs the next update or acceleration on self
+    #returns either "updates", "accelerations", or "terminate"
+    def lift(self):
+        parent_box = []
+        box = [0]
+        priority_of_box = 0
+        in_box = self.list_in_box(box)
+        while(True):
+            #first, try an update
+            for i in in_box:
+                if self.game.player[i] == priority_of_box % 2:
+                    for e in range(len(self.game.succ[i])):
+                        if(self.dest_of_outgoing_edge[i][e][priority_of_box] > box[priority_of_box]):
+                            self.map[i] = deepcopy(self.dest_of_outgoing_edge[i][e])
+                            self.update_info(i)
+                            return("updates")
+                else:
+                    nb_succ = len(self.game.succ[i])
+                    mi = min([self.dest_of_outgoing_edge[i][e][priority_of_box] for e in range(nb_succ) if util.is_prefix(parent_box, self.dest_of_outgoing_edge[i][e])])
+                    if(mi > box[priority_of_box]):
+                        self.map[i][priority_of_box] = mi
+                        already_valid = [False for e in range(nb_succ)]
+                        h = priority_of_box + 1
+                        while(not(all(already_valid)) and h < self.height):
+                            ma = max([self.dest_of_outgoing_edge[i][e][h] for e in range(nb_succ) if not(already_valid[e])])
+                            self.map[i][h] = max(self.map[i][h], ma)
+                            for e in range(nb_succ):
+                                already_valid[e] = already_valid[e] or (self.dest_of_outgoing_edge[i][e][h] < ma)
+                            h += 2
+                        self.update_info(i)
+                        return("updates")
+            
+            #try to accelerate  (asymmetric version: only for p+1 % 2)
+            if all([self.is_valid[i][(priority_of_box+1) % 2] for i in in_box]):
+                if(priority_of_box == 0):
+                    return("terminate")
+                else:
+                    for i in in_box:
+                        self.map[i][priority_of_box-1] += 1
+                        self.update_info(i)
+                    return("accelerations")
+                        
+            #go deeper
+            parent_box = deepcopy(box)
+            mi = min([self.map[i][priority_of_box+1] for i in in_box])
+            box.append(mi)
+            in_box = ([i for i in in_box if self.map[i][priority_of_box+1] == mi])
+            priority_of_box+=1

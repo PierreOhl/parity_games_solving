@@ -248,3 +248,31 @@ class execution:
         
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if not(phi.pair[0][i].is_top)]
+
+
+    def symmetric_no_reset(self):
+        
+        self.infos["algorithm"] = "Symmetric with global validity and no resets"
+        self.infos["updates"] = 0
+        self.infos["accelerations"] = 0
+        
+        start_time = time.time()
+        
+        phi = progress_measures.sym_progress_measure_no_reset(self.game)
+        
+        while(True):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            s = phi.lift()
+            
+            if(s=="terminate"):
+                break
+            
+            self.infos[s] += 1
+
+        
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if phi.map[i][0] == 1]

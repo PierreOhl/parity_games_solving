@@ -6,18 +6,22 @@ import random as rand
 
 
 def generate_random(size, average_deg):
-    invproba = size * size // average_deg
-    edges=[]    
+    edges=[]
     for i in range(size):
-        for j in range(size):
-            for p in range(1,size+1):
-                r = rand.randrange(invproba)
-                if(r==0):
-                    edges.append((i,j,p))
+        j = rand.randrange(size)
+        p = rand.randrange(size) +1
+        edges.append((i,j,p))
+    if(average_deg > 1):    
+        invproba = size * size // (average_deg-1)
+        for i in range(size):
+            for j in range(size):
+                for p in range(1,size+1):
+                    r = rand.randrange(invproba)
+                    if(r==0):
+                        edges.append((i,j,p))
     eve=[i<size//2 for i in range(size)]
     rep = games.parity_game(size, size, edges, eve)
     return(rep)
-
 
 '''
 # a trivial game won by Adam
@@ -34,10 +38,9 @@ g=games.parity_game(2, 2, edges, [0,1])
 edges=[]
 g=games.parity_game(2, 2, edges, [1,1])
 '''
-
 '''
 # a game of size 20
-edges=[(0, 9, 8), (0, 13, 0), (0, 16, 2), (0, 18, 17), (1, 4, 13), (1, 12, 1), (2, 4, 6), (3, 7, 14), (3, 18, 0), (3, 19, 1), (4, 0, 1), (4, 1, 12), (4, 1, 17), (4, 2, 10), (4, 5, 17), (4, 12, 17), (5, 0, 4), (5, 0, 8), (5, 9, 7), (6, 4, 15), (6, 4, 16), (6, 8, 2), (7, 18, 11), (8, 7, 8), (12, 13, 3), (12, 13, 6), (13, 8, 14), (13, 19, 11), (14, 2, 3), (14, 2, 11), (14, 14, 0), (15, 8, 4), (15, 11, 14), (18, 11, 17), (19, 10, 10), (19, 13, 16)]
+edges=[(0, 9, 8), (0, 13, 1), (0, 16, 2), (0, 18, 17), (1, 4, 13), (1, 12, 1), (2, 4, 6), (3, 7, 14), (3, 18, 1), (3, 19, 1), (4, 0, 1), (4, 1, 12), (4, 1, 17), (4, 2, 10), (4, 5, 17), (4, 12, 17), (5, 0, 4), (5, 0, 8), (5, 9, 7), (6, 4, 15), (6, 4, 16), (6, 8, 2), (7, 18, 11), (8, 7, 8), (12, 13, 3), (12, 13, 6), (13, 8, 14), (13, 19, 11), (14, 2, 3), (14, 2, 11), (14, 14, 1), (15, 8, 4), (15, 11, 14), (18, 11, 17), (19, 10, 10), (19, 13, 16)]
 g=games.parity_game(20, 20, edges, [i<10 for i in range(20)])
 '''
 '''
@@ -80,46 +83,57 @@ g=games.parity_game(4,4,edges,[1,1,0,0])
 edges=[(0, 2, 1), (0, 3, 2), (1, 2, 1), (1, 3, 3), (2, 1, 2), (3, 0, 1), (3, 3, 1)]
 g=games.parity_game(4, 4, edges, [1,1,0,0])
 '''
-
+'''
 # an instance of size 3 where local algorithm loops
 edges = [(0, 1, 2), (1, 2, 3), (2, 2, 1), (2, 0, 1)]
 g = games.parity_game(3, 4, edges, [0,0,0])
-
-
+'''
 '''
 #a one-vertex instance winning for Adam
 g = games.parity_game(1, 2, [(0,0,1)], [0])
 '''
+'''
+#a debugging instance of size 4
+edges=[(1, 1, 3), (1, 2, 2), (1, 3, 2), (1, 3, 4), (2, 1, 4), (2, 2, 1), (2, 3, 3), (3, 1, 1), (3, 2, 3), (3, 2, 4), (3, 3, 2)]
+g=games.parity_game(4, 4, edges, [1,1,0,0])
+'''
+'''
+#a debugging instance of size 2
+edges=[(0,1,4), (1,1,1), (1,0,3)]
+g=games.parity_game(2, 4, edges, [0,0])
+'''
+'''
+#debug
+edges = [(0, 2, 5), (1, 3, 4), (2, 0, 3), (3, 0, 4), (1, 2, 4), (1, 2, 2), (2, 1, 5)]
+g=games.parity_game(4, 5, edges, [1,1,0,0])
 
-exec_ziel = executions.execution(g, 10)
+
+exec_ziel = executions.execution(g.to_max_parity(), 10)
 exec_ziel.zielonka_algorithm()
 exec_ziel.printinfos()
 print(exec_ziel.solution)
 
-exec_glid = executions.execution(g, 10)
-exec_glid.asymmetric_lifting_gliding(0)
-exec_glid.printinfos()
-print(exec_glid.solution)
-
-exec_sym = executions.execution(g, 10)
-exec_sym.symmetric_local()
+exec_sym = executions.execution(g, 10000)
+print(exec_sym.game.edges)
+exec_sym.symmetric_no_reset()
 exec_sym.printinfos()
 print(exec_sym.solution)
 
 '''
-while(True):
-    g=generate_random(4,2)
 
-    exec_sym = executions.execution(g, 10)
-    exec_sym.symmetric_local()
+while(True):
+    g=generate_random(100,3)
+    print(g.to_min_parity().edges)
+
+    exec_sym = executions.execution(g.to_min_parity(), 10)
+    exec_sym.symmetric_no_reset()
     exec_sym.printinfos()
 
     exec_ziel = executions.execution(g, 10)
     exec_ziel.zielonka_algorithm()
     exec_ziel.printinfos()
 
-    if exec_ziel.solution != exec_sym.solution:
-        print(g.edges)
+    if(exec_sym.solution != list(exec_ziel.solution)):
+        print("probleme")
+        print(exec_sym.solution, exec_ziel.solution)
         break
-
-'''
