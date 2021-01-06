@@ -107,3 +107,13 @@ def is_prefix(list1, list2):
             return(False)
         ind+=1
     return(True)
+
+#returns the smallest index larger than start which is in
+#given list of indices and has value
+#false in the given list of booleans, and len(list) if
+#there is no such index
+def smallest_false_index_from_list_larger_than(start, list_of_booleans, list_of_indices):
+    j=start
+    while(j < len(list_of_booleans) and (list_of_booleans[j] or j not in list_of_indices)):
+        j+=1
+    return(j)

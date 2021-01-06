@@ -23,6 +23,17 @@ def generate_random(size, average_deg):
     rep = games.parity_game(size, size, edges, eve)
     return(rep)
 
+def generate_random_fast(size, degree):
+    edges=[]
+    for i in range(size):
+        for h in range(degree):
+            j = rand.randrange(size)
+            p = rand.randrange(size) +1
+            edges.append((i,j,p))
+    eve=[i<size//2 for i in range(size)]
+    rep = games.parity_game(size, size, edges, eve)
+    return(rep)
+
 '''
 # a trivial game won by Adam
 edges=[(0,1,2), (1,0,2), (1,1,1)]
@@ -101,6 +112,7 @@ g=games.parity_game(4, 4, edges, [1,1,0,0])
 #a debugging instance of size 2
 edges=[(0,1,4), (1,1,1), (1,0,3)]
 g=games.parity_game(2, 4, edges, [0,0])
+g = g.to_min_parity()
 '''
 '''
 #debug1
@@ -117,12 +129,13 @@ g = games.parity_game(10, 11, edges, [i<5 for i in range(10)])
 edges = [(0, 6, 7), (1, 2, 3), (3, 6, 8), (4, 7, 4), (5, 3, 3), (7, 0, 7), (0, 5, 9), (0, 7, 8), (1, 6, 3), (2, 4, 9), (2, 4, 3), (2, 6, 2), (3, 0, 2), (4, 5, 7), (5, 2, 5), (5, 6, 9), (5, 7, 3), (6, 2, 9), (6, 4, 2), (6, 7, 2), (7, 2, 2)]
 g = games.parity_game(8, 9, edges, [i<4 for  i in range(8)])
 '''
+
 '''
 #debug 4
-edges = [(1, 3, 5), (3, 0, 2), (0, 1, 3), (1, 2, 3), (2, 0, 4), (2, 3, 2), (3, 1, 2), (3, 2, 2)]
+edges = [(1, 3, 5), (2, 0, 5), (3, 1, 5), (0, 0, 4), (0, 1, 5), (0, 2, 4), (2, 1, 3), (2, 2, 4), (3, 3, 2)]
 g = games.parity_game(4,5,edges, [1,1,0,0])
-'''
-'''
+
+
 exec_ziel = executions.execution(g.to_max_parity(), 10)
 exec_ziel.zielonka_algorithm()
 exec_ziel.printinfos()
@@ -131,24 +144,24 @@ print(exec_ziel.solution)
 exec_gliding = executions.execution(g.to_max_parity(), 10)
 exec_gliding.asymmetric_lifting_gliding(0)
 exec_gliding.printinfos()
+print(exec_gliding.solution)
 
+print(g.edges)
 exec_sym = executions.execution(g, 10000)
 exec_sym.symmetric_no_reset()
 exec_sym.printinfos()
 print(exec_sym.solution)
-'''
 
+'''
 while(True):
-    g=generate_random(200,2)
-    
-    #print(g.to_min_parity().edges)
+    g=generate_random_fast(400,2)
     print()
     
-    exec_sym = executions.execution(g.to_min_parity(), 10)
+    exec_sym = executions.execution(g.to_min_parity(), 120)
     exec_sym.symmetric_no_reset()
     exec_sym.printinfos()
 
-    exec_ziel = executions.execution(g, 10)
+    exec_ziel = executions.execution(g, 120)
     exec_ziel.zielonka_algorithm()
     exec_ziel.printinfos()
 
@@ -157,3 +170,4 @@ while(True):
         print(g.to_min_parity().edges)
         print(exec_sym.solution, exec_ziel.solution)
         break
+

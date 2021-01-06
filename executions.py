@@ -254,7 +254,8 @@ class execution:
         
         self.infos["algorithm"] = "Symmetric with global validity and no resets"
         self.infos["updates"] = 0
-        self.infos["accelerations"] = 0
+        self.infos["small_accelerations"] = 0
+        self.infos["big_accelerations"] = 0
         
         start_time = time.time()
         
