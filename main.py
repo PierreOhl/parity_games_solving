@@ -134,40 +134,27 @@ g = games.parity_game(8, 9, edges, [i<4 for  i in range(8)])
 #debug 4
 edges = [(1, 3, 5), (2, 0, 5), (3, 1, 5), (0, 0, 4), (0, 1, 5), (0, 2, 4), (2, 1, 3), (2, 2, 4), (3, 3, 2)]
 g = games.parity_game(4,5,edges, [1,1,0,0])
-
-
-exec_ziel = executions.execution(g.to_max_parity(), 10)
-exec_ziel.zielonka_algorithm()
-exec_ziel.printinfos()
-print(exec_ziel.solution)
-
-exec_gliding = executions.execution(g.to_max_parity(), 10)
-exec_gliding.asymmetric_lifting_gliding(0)
-exec_gliding.printinfos()
-print(exec_gliding.solution)
-
-print(g.edges)
-exec_sym = executions.execution(g, 10000)
-exec_sym.symmetric_no_reset()
-exec_sym.printinfos()
-print(exec_sym.solution)
-
 '''
-while(True):
-    g=generate_random_fast(400,2)
-    print()
+
+
+for i in range(200):
+    g = generate_random_fast(600, 2)
+    g.save_to_file("size600deg2/" + "{:03d}".format(i))
     
-    exec_sym = executions.execution(g.to_min_parity(), 120)
-    exec_sym.symmetric_no_reset()
-    exec_sym.printinfos()
-
-    exec_ziel = executions.execution(g, 120)
+    exec_ziel = executions.execution(g.to_max_parity(), 180)
+    exec_sym = executions.execution(g, 180)
+    
     exec_ziel.zielonka_algorithm()
+    exec_sym.symmetric_no_reset()
+    
+    print("instance ", i)
+    exec_sym.printinfos()
     exec_ziel.printinfos()
-
-    if(exec_sym.solution != list(exec_ziel.solution) and not(exec_sym.is_timeout) and not(exec_ziel.is_timeout)):
-        print("probleme")
-        print(g.to_min_parity().edges)
-        print(exec_sym.solution, exec_ziel.solution)
-        break
-
+    
+    f = open("results/size600deg2", "a")
+    f.write("{:02f}".format(exec_sym.infos["runtime"]) + "," +
+            "{:02d}".format(exec_sym.infos["updates"]) + "," +
+            "{:02f}".format(exec_ziel.infos["runtime"]) + ","
+            "{:02d}".format(exec_ziel.infos["equivalent updates"]) + "\n")
+    f.close()
+    
