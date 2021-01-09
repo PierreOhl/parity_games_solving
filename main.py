@@ -154,7 +154,7 @@ print(exec_sym.solution)
 
 '''
 while(True):
-    g=generate_random_fast(400,2)
+    g=generate_random_fast(100,2)
     print()
     
     exec_sym = executions.execution(g.to_min_parity(), 120)
@@ -165,7 +165,7 @@ while(True):
     exec_ziel.zielonka_algorithm()
     exec_ziel.printinfos()
 
-    if(exec_sym.solution != list(exec_ziel.solution) and not(exec_sym.is_timeout) and not(exec_ziel.is_timeout)):
+    if(exec_sym.solution != list(exec_ziel.solution)  and not(exec_ziel.is_timeout)): #and not(exec_sym.is_timeout)
         print("probleme")
         print(g.to_min_parity().edges)
         print(exec_sym.solution, exec_ziel.solution)
