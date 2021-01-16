@@ -1,5 +1,6 @@
 import random as rand
 from copy import deepcopy
+import games
 
 #outputs a random element of a (non-empty) list
 def pickrandom(l):
@@ -45,6 +46,8 @@ def attractor_to_set_of_vertices(vert_set, succ, vert_player, target_set, player
         rep=rep.union(add)
         add = one_step_to_set_of_vertices(vert_set, succ, vert_player, rep, player)
     return(rep)
+
+        
 
 class partition_plus_node_data:
     '''
@@ -117,3 +120,64 @@ def smallest_false_index_from_list_larger_than(start, list_of_booleans, list_of_
     while(j < len(list_of_booleans) and (list_of_booleans[j] or j not in list_of_indices)):
         j+=1
     return(j)
+
+'''
+********************************
+*  GENERATION OF RANDOM GAMES  *
+********************************
+'''
+
+def generate_random(size, average_deg):
+    edges=[]
+    for i in range(size):
+        j = rand.randrange(size)
+        p = rand.randrange(size) +1
+        edges.append((i,j,p))
+    if(average_deg > 1):    
+        invproba = size * size // (average_deg-1)
+        for i in range(size):
+            for j in range(size):
+                for p in range(1,size+1):
+                    r = rand.randrange(invproba)
+                    if(r==0):
+                        edges.append((i,j,p))
+    eve=[i<size//2 for i in range(size)]
+    rep = games.parity_game(size, size, edges, eve)
+    return(rep)
+
+#generates a game in max semantics
+def generate_random_fast(size, degree, max_prio):
+    edges=[]
+    for i in range(size):
+        for h in range(degree):
+            j = rand.randrange(size)
+            p = rand.randrange(max_prio) +1
+            edges.append((i,j,p))
+    player=[i<size//2 for i in range(size)]
+    rep = games.parity_game(size, max_prio, edges, player)
+    return(rep)
+
+#generates a bipartite game (max semantics)
+def generate_random_fast_bipartite(size, degree, max_prio):
+    edges=[]
+    med = size//2
+    for i in range(size):
+        for h in range(degree):
+            j = rand.randrange(med) + (i < med) * med
+            p = rand.randrange(max_prio) +1
+            edges.append((i,j,p))
+    player=[i<med for i in range(size)]
+    rep = games.parity_game(size, max_prio, edges, player)
+    return(rep)
+
+def generate_random_fast_bipartite_opponent_edges(size, degree, max_prio):
+    edges=[]
+    med = size//2
+    for i in range(size):
+        for h in range(degree):
+            j = rand.randrange(med) + (i < med) * med
+            p = 2*(rand.randrange(max_prio//2)) + (i<med) +1
+            edges.append((i,j,p))
+    player=[i<med for i in range(size)]
+    rep = games.parity_game(size, max_prio, edges, player)
+    return(rep)

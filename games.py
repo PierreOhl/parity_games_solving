@@ -50,6 +50,7 @@ class parity_game:
             )
         return(parity_game(self.size, self.max_priority + 1, edges, self.player))
 
+
     #returns game in max partity semantinc, reversing and turning
     # 2,..., d+1 into 1,..., d
     def to_max_parity(self):
@@ -113,3 +114,4 @@ class parity_game:
                     edges.append((h * width + w, (h-1) * width + w, h+1))
         player = [(i // width + i + 1) % 2 for i in range(size)]
         return(parity_game(size, even_top_priority, edges, player))
+    

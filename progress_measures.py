@@ -360,10 +360,6 @@ class sym_progress_measure_no_reset:
     #update dest_of_outgoing_edge for i and predecessors edges of i
     #and validity of i and of predecessors
     def update_info(self, i):
-        #updating dest_of_outgoing_edge[i]
-        for index_of_edge, (succ_vert, p) in enumerate(self.game.succ[i]):
-            for h in range(p+1):
-                self.dest_of_outgoing_edge[i][index_of_edge][h] = self.map[succ_vert][h] + (h==p)
         #updating validity
         self.update_validity(i)
         #updating dest_of_vert
@@ -425,7 +421,7 @@ class sym_progress_measure_no_reset:
                 
                 while(h < self.height):
                     
-                    if(h % 2 == self.game.player[i] or len(edge_in_scope) == 0): #just copy
+                    if(len(edge_in_scope) == 0):
                         self.dest_of_vert[i][h] = self.map[i][h]
 
                     else:
@@ -433,7 +429,8 @@ class sym_progress_measure_no_reset:
                             min([self.dest_of_outgoing_edge[i][e][h] for e in edge_in_scope]),
                             self.map[i][h]
                         )
-                        edge_in_scope = [e for e in edge_in_scope if self.dest_of_outgoing_edge[i][e][h] == self.dest_of_vert[i][h]]
+                        if(h%2 != self.game.player[i]):
+                            edge_in_scope = [e for e in edge_in_scope if self.dest_of_outgoing_edge[i][e][h] == self.dest_of_vert[i][h]]
                     
                     h+=1
             
@@ -504,7 +501,7 @@ class sym_progress_measure_no_reset:
             
             if first_invalid[(priority_of_box + 1) %2] == self.game.size : #all vertices valid for opponent
                 if(priority_of_box == 0):
-                    return("terminate")
+                    return("terminate")  #todo: this is stupid, change it
                 else:
                     for i in in_box:
                         self.map[i][priority_of_box-1] += 1

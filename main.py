@@ -2,37 +2,9 @@ import games
 import progress_measures
 import executions
 import trees
-import random as rand
+import util
 
 
-def generate_random(size, average_deg):
-    edges=[]
-    for i in range(size):
-        j = rand.randrange(size)
-        p = rand.randrange(size) +1
-        edges.append((i,j,p))
-    if(average_deg > 1):    
-        invproba = size * size // (average_deg-1)
-        for i in range(size):
-            for j in range(size):
-                for p in range(1,size+1):
-                    r = rand.randrange(invproba)
-                    if(r==0):
-                        edges.append((i,j,p))
-    eve=[i<size//2 for i in range(size)]
-    rep = games.parity_game(size, size, edges, eve)
-    return(rep)
-
-def generate_random_fast(size, degree):
-    edges=[]
-    for i in range(size):
-        for h in range(degree):
-            j = rand.randrange(size)
-            p = rand.randrange(size) +1
-            edges.append((i,j,p))
-    eve=[i<size//2 for i in range(size)]
-    rep = games.parity_game(size, size, edges, eve)
-    return(rep)
 
 '''
 # a trivial game won by Adam
@@ -132,29 +104,78 @@ g = games.parity_game(8, 9, edges, [i<4 for  i in range(8)])
 
 '''
 #debug 4
-edges = [(1, 3, 5), (2, 0, 5), (3, 1, 5), (0, 0, 4), (0, 1, 5), (0, 2, 4), (2, 1, 3), (2, 2, 4), (3, 3, 2)]
+edges = [(0, 1, 3), (0, 0, 3), (1, 2, 2), (1, 3, 3), (2, 1, 5), (2, 0, 4), (3, 3, 4)]
 g = games.parity_game(4,5,edges, [1,1,0,0])
+
+exec_sym = executions.execution(g, 10000)
+exec_sym.symmetric_no_reset()
+exec_sym.printinfos()
 '''
 
 
-for i in range(200):
-    g = generate_random_fast(600, 2)
-    g.save_to_file("size600deg2/" + "{:03d}".format(i))
-    
-    exec_ziel = executions.execution(g.to_max_parity(), 180)
-    exec_sym = executions.execution(g, 180)
-    
-    exec_ziel.zielonka_algorithm()
-    exec_sym.symmetric_no_reset()
+
+
+'''
+
+for i in range(46,10000):
+    g = generate_random_fast(4, 2, 4)
+    #g.save_to_file("size600deg2prio100/" + "{:03d}".format(i))
     
     print("instance ", i)
-    exec_sym.printinfos()
-    exec_ziel.printinfos()
     
-    f = open("results/size600deg2", "a")
+    exec_ziel = executions.execution(g, 180)
+    exec_sym = executions.execution(g.to_min_parity(), 180)
+    
+    exec_ziel.zielonka_algorithm()
+    
+    
+    exec_ziel.printinfos()
+
+    print(g.to_min_parity().edges)
+    
+    exec_sym.symmetric_no_reset()
+    
+    exec_sym.printinfos()
+    
+
+    
+    
+    f = open("results/size2000deg2prio300", "a")
     f.write("{:02f}".format(exec_sym.infos["runtime"]) + "," +
             "{:02d}".format(exec_sym.infos["updates"]) + "," +
             "{:02f}".format(exec_ziel.infos["runtime"]) + ","
             "{:02d}".format(exec_ziel.infos["equivalent updates"]) + "\n")
     f.close()
     
+    
+'''
+
+size=200
+prio=200
+i=0
+while True:
+    i+=1
+    print("instance ", i)
+    if (i%3 == 0):
+        g = util.generate_random_fast(size, 2, prio)
+        print("normal")
+    elif (i%3 == 1):
+        g = util.generate_random_fast_bipartite(size, 2, prio)
+        print("bipartite")
+    else :
+        g = util.generate_random_fast_bipartite_opponent_edges(size, 2, prio)
+        print("bipartite hard")
+    
+    gmin = g.to_min_parity()
+    
+    print(gmin.edges)
+    
+    exec_ziel = executions.execution(g, 180)
+    exec_sym = executions.execution(gmin, 180)
+    
+    exec_ziel.zielonka_algorithm()
+    exec_sym.symmetric_no_reset()
+    
+    exec_ziel.printinfos()
+    exec_sym.printinfos()
+        
