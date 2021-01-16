@@ -278,3 +278,52 @@ class execution:
         
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if phi.map[i][0] == 1]
+        
+    
+    def totally_ordered_sym_arbitrary_lifts(self):
+        start_time=time.time()
+        phi = progress_measures.totally_ordered_symmetric_pm(self.game)
+        
+        self.infos["algorithm"] = "finite alt-lexico pm with arbitrary updates"
+        self.infos["updates"]=0
+
+        invalid = phi.list_of_invalid_vertices()
+        while(invalid):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            i = util.pickrandom(invalid)
+            phi.lift(i, True)
+            self.infos["updates"]+=1
+
+            invalid = phi.list_of_invalid_vertices()    
+    
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if phi.map[i][0]]
+        
+        
+    
+    def totally_ordered_sym_increasing_lifts(self, player):
+        start_time=time.time()
+        phi = progress_measures.totally_ordered_symmetric_pm(self.game)
+        
+        self.infos["algorithm"] = "finite alt-lexico pm with arbitrary updates"
+        self.infos["updates"]=0
+
+        invalid = phi.list_of_vertices_invalid_for_player(player)
+        while(invalid):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            i = util.pickrandom(invalid)
+            phi.lift(i, True)
+            self.infos["updates"]+=1
+
+            invalid = phi.list_of_vertices_invalid_for_player(player)
+    
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if not(phi.map[i][1])]

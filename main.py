@@ -106,15 +106,55 @@ g = games.parity_game(8, 9, edges, [i<4 for  i in range(8)])
 #debug 4
 edges = [(0, 1, 3), (0, 0, 3), (1, 2, 2), (1, 3, 3), (2, 1, 5), (2, 0, 4), (3, 3, 4)]
 g = games.parity_game(4,5,edges, [1,1,0,0])
-
-exec_sym = executions.execution(g, 10000)
-exec_sym.symmetric_no_reset()
-exec_sym.printinfos()
 '''
 
+'''
+#debug 4
+edges = [(0, 0, 2), (0, 0, 3), (1, 2, 5), (1, 3, 2), (2, 2, 5), (2, 2, 2), (3, 0, 5)]
+g = games.parity_game(4,5,edges, [1,1,0,0])
+'''
+
+total_updates_asym = 0
+total_updates_lex_inc = 0
+total_updates_lex = 0
+total_updates_sym = 0
+total_updates_ziel = 0
+
+for i in range(100):
+    
+    g = util.generate_random_fast_bipartite(10,2,10).to_min_parity()
+
+    exec_sym = executions.execution(g, 10)
+    exec_sym.symmetric_no_reset()
+    exec_sym.printinfos()
+    total_updates_sym += exec_sym.infos["updates"]
+    
+    exec_ziel = executions.execution(g.to_max_parity(), 10)
+    exec_ziel.zielonka_algorithm()
+    exec_ziel.printinfos()
+    total_updates_ziel += exec_ziel.infos["equivalent updates"]
+
+    exec_lex = executions.execution(g,10000)
+    exec_lex.totally_ordered_sym_arbitrary_lifts()
+    exec_lex.printinfos()
+    total_updates_lex += exec_lex.infos["updates"]
+    
+    exec_lex_inc = executions.execution(g,10)
+    exec_lex_inc.totally_ordered_sym_increasing_lifts(0)
+    exec_lex_inc.printinfos()
+    total_updates_lex_inc += exec_lex_inc.infos["updates"]
+    
+    exec_asym = executions.execution(g.to_max_parity(), 10)
+    exec_asym.asymmetric_lifting_standard(0)
+    exec_asym.printinfos()
+    total_updates_asym += exec_asym.infos["updates"]
 
 
-
+print("lex inc: ", total_updates_lex_inc/100)
+print("lex: ", total_updates_lex/100)
+print("asym: ", total_updates_asym/100)
+print("ziel: ", total_updates_ziel/100)
+print("sym no reset", total_updates_sym/100)
 '''
 
 for i in range(46,10000):
@@ -150,6 +190,7 @@ for i in range(46,10000):
     
 '''
 
+'''
 size=200
 prio=200
 i=0
@@ -179,3 +220,4 @@ while True:
     exec_ziel.printinfos()
     exec_sym.printinfos()
         
+'''

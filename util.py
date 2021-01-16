@@ -181,3 +181,15 @@ def generate_random_fast_bipartite_opponent_edges(size, degree, max_prio):
     player=[i<med for i in range(size)]
     rep = games.parity_game(size, max_prio, edges, player)
     return(rep)
+
+
+
+#compares two positions in alternating lexicographic order
+def is_smaller_alt_lex(map1, map2, height):
+    h=0
+    while(h<height):
+        if(map1[h] == map2[h]):
+            h+=1
+        else:
+            return(((map1[h] > map2[h]) + h) % 2)
+    return(True)

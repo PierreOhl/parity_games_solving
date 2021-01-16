@@ -45,7 +45,7 @@ class asym_progress_measure_standard:
 
     def lift(self,i):
         self.map[i] = self.destination[i]
-        for (predecessor, priority) in self.game.pred[i] :
+        for (predecessor, priority,_) in self.game.pred[i] :
             self.destination[predecessor] = self.compute_destination(predecessor)
 
     def list_invalid(self):
@@ -528,3 +528,66 @@ class sym_progress_measure_no_reset:
             mi = min([self.map[i][priority_of_box] for i in in_box])
             box.append(mi)
             in_box = ([i for i in in_box if self.map[i][priority_of_box] == mi])
+
+
+class totally_ordered_symmetric_pm:
+    '''
+    represents a pm on a structure with a total order,
+    which is lexicographic with inversion on even coordinates
+    (which correspond to player 1's PM)
+    '''
+    
+    def __init__(self, game):
+        self.game = game
+        self.height = game.max_priority + 1
+        self.map = [
+            [0 for h in range(self.height)]
+            for i in range(game.size)
+        ]
+        self.dest_of_vert = [
+            [0 for h in range(self.height)]
+            for i in range(self.game.size)
+        ]
+        ''' TODO
+        self.is_valid = 
+        '''
+        for i in range(self.game.size):
+            self.update_dest(i)
+    
+        
+    def update_dest(self, i, with_bound = False):
+        #compute destination for each outgoing edge
+        dest_of_outgoing_edge = [self.map[succ].copy() for (succ,_) in self.game.succ[i]]
+        for e in range(len(dest_of_outgoing_edge)):
+            p = self.game.succ[i][e][1]
+            if(with_bound):
+                while(dest_of_outgoing_edge[e][p] == self.game.size -1):
+                    p -= 2
+            dest_of_outgoing_edge[e][p] += 1
+            for h in range(p+1, self.height):
+                dest_of_outgoing_edge[e][h] = 0
+        
+        #compute either a max or a min
+        rep = dest_of_outgoing_edge[0]
+        for e in range(1, len(self.game.succ[i])):
+            if((util.is_smaller_alt_lex(dest_of_outgoing_edge[e], rep, self.height) + self.game.player[i]) % 2):
+                rep = dest_of_outgoing_edge[e]
+        
+        #update destination
+        self.dest_of_vert[i] = rep
+    
+    def lift(self, i, with_bound = False):
+        #updates value of i, and destinations of predecessors
+        self.map[i] = self.dest_of_vert[i].copy()
+        for (pred, _,_) in self.game.pred[i]:
+            self.update_dest(pred, with_bound)
+    
+    
+    #returns list of vertices in box 0,0 with dest != map
+    def list_of_invalid_vertices(self):
+        return([i for i in range(self.game.size) if self.dest_of_vert[i] != self.map[i] and util.is_prefix([0,0], self.map[i])])
+    
+    #returns list of vertices in box 0,0 with dest > map (if player = 0), and < otherwise
+    def list_of_vertices_invalid_for_player(self, player):
+        return([i for i in range(self.game.size) if ((util.is_smaller_alt_lex(self.dest_of_vert[i], self.map[i], self.height) + player + 1) %2) and util.is_prefix([0,0], self.map[i])])
+
