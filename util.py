@@ -6,6 +6,70 @@ import games
 def pickrandom(l):
     return(l[rand.randrange(len(l))])
 
+def truncate_to_one(x):
+    if(x==0):
+        return(x)
+    else:
+        return(x//abs(x))
+class possibly_infinite_integer:
+    '''
+    defines possibly infinite integers by two fields:
+        - value is the value if it is finite
+        - times_infinity is an integer in -1,0,1, and
+        is set to -1 for - infty and 1 for + infty, in
+        which case the value is discarded
+    
+    '''
+    def __init__(self, value, infinity=0): #initialises an integer
+        self.value = value
+        self.times_infinity = infinity
+    
+    def __eq__(self, b):
+        if(type(b) is int):
+            return(self.times_infinity==0 and self.value == b)
+        if(self.times_infinity or b.times_infinity):
+            return(self.times_infinity == b.times_infinity)
+        else:
+            return(self.value == b.value)
+    
+    def __add__(self, b):
+        if(type(b) is int):
+            return(possibly_infinite_integer(self.value + b, self.times_infinity))
+        return(possibly_infinite_integer(self.value + b.value, truncate_to_one(b.times_infinity + self.times_infinity)))
+    
+    def __mul__(self, b):
+        if(type(b) is int):
+            return(possibly_infinite_integer(self.value * b, truncate_to_one(b * self.times_infinity)))
+        return(possibly_infinite_integer(self.value * b.value, truncate_to_one(self.value * b.times_infinity)))
+    
+    def __sub__(self, b):
+        if(type(b) is int):
+            return(possibly_infinite_integer(self.value - b, self.times_infinity))
+        return(possibly_infinite_integer(self.value - b.value, truncate_to_one(self.times_infinity - b.times_infinity)))
+        
+    def __lt__(self, b):
+        if(type(b) is int):
+            return(self.times_infinity == -1 or self.value < b)
+        return(self.times_infinity < b.times_infinity or (self.value < b.value and self.times_infinity == 0 and b.times_infinity == 0))
+    
+    def __gt__(self, b):
+        if(type(b) is int):
+            return(self.times_infinity == 1 or self.value > b)
+        return(self.times_infinity > b.times_infinity or (self.value > b.value and self.times_infinity == 0 and b.times_infinity == 0))
+    
+    def __le__(self, b):
+        if(type(b) is int):
+            return(self.times_infinity == -1 or self.value <= b)
+        return(self.times_infinity == -1 or self.value <= b.value or b.times_infinity == 1)
+    
+    def __ge__(self, b):
+        if(type(b) is int):
+            return(self.times_infinity == 1 or self.value >= b)
+        return(self.times_infinity == 1 or self.value >= b.value or b.times_infinity == -1)
+    
+
+
+
 '''
 ************************
 *  ATTRACTOR-ROUTINES  *
@@ -127,7 +191,7 @@ def smallest_false_index_from_list_larger_than(start, list_of_booleans, list_of_
 ********************************
 '''
 
-def generate_random(size, average_deg):
+def parity_generate_random(size, average_deg):
     edges=[]
     for i in range(size):
         j = rand.randrange(size)
@@ -146,7 +210,7 @@ def generate_random(size, average_deg):
     return(rep)
 
 #generates a game in max semantics
-def generate_random_fast(size, degree, max_prio):
+def parity_generate_random_fast(size, degree, max_prio):
     edges=[]
     for i in range(size):
         for h in range(degree):
@@ -158,7 +222,7 @@ def generate_random_fast(size, degree, max_prio):
     return(rep)
 
 #generates a bipartite game (max semantics)
-def generate_random_fast_bipartite(size, degree, max_prio):
+def parity_generate_random_fast_bipartite(size, degree, max_prio):
     edges=[]
     med = size//2
     for i in range(size):
@@ -170,7 +234,7 @@ def generate_random_fast_bipartite(size, degree, max_prio):
     rep = games.parity_game(size, max_prio, edges, player)
     return(rep)
 
-def generate_random_fast_bipartite_opponent_edges(size, degree, max_prio):
+def parity_generate_random_fast_bipartite_opponent_edges(size, degree, max_prio):
     edges=[]
     med = size//2
     for i in range(size):
@@ -182,6 +246,28 @@ def generate_random_fast_bipartite_opponent_edges(size, degree, max_prio):
     rep = games.parity_game(size, max_prio, edges, player)
     return(rep)
 
+def energy_generate_random_fast(size, degree, max_absolute_value):
+    edges=[]
+    for i in range(size):
+        for h in range(degree):
+            j = rand.randrange(size)
+            w = rand.randrange(2*max_absolute_value) - max_absolute_value
+            edges.append((i,j,w))
+    player=[i<size//2 for i in range(size)]
+    rep = games.energy_game(size, max_absolute_value, edges, player)
+    return(rep)
+
+def energy_generate_random_fast_bipartite(size, degree, max_absolute_value):
+    edges=[]
+    med = size//2
+    for i in range(size):
+        for h in range(degree):
+            j = rand.randrange(med) + (i < med) * med
+            p = rand.randrange(2*max_absolute_value) - max_absolute_value
+            edges.append((i,j,p))
+    player=[i<med for i in range(size)]
+    rep = games.energy_game(size, max_absolute_value, edges, player)
+    return(rep)
 
 
 #compares two positions in alternating lexicographic order

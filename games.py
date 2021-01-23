@@ -1,5 +1,61 @@
 from copy import deepcopy
 
+class energy_game:
+    '''
+    energy game blabla
+    '''
+    def __init__(self, n, max_absolute_value, edges, player):
+        self.size = n
+        self.edges = edges
+        self.number_edges = len(edges)
+        self.player = player
+        self.succ = [[] for i in range(n)]
+        self.pred = [[] for i in range(n)]
+        self.max_absolute_value = max_absolute_value
+        for t in edges:
+            self.pred[t[1]].append((t[0],t[2], len(self.succ[t[0]])))
+            self.succ[t[0]].append((t[1],t[2]))
+    
+    @classmethod
+    def from_parity_game(cls, parity_game):
+        edges = [(i,j,((-1)*parity_game.size) ** p) for (i,j,p) in parity_game.edges]
+        max_absolute_value = parity_game.size ** parity_game.max_priority
+        return(energy_game(parity_game.size, max_absolute_value, edges, parity_game.player))
+    
+    def to_string(self):
+        return(str(self.size) + '\n'
+            + str(self.max_absolute_value) + '\n'
+            + str(self.edges)[1:-1] + '\n'
+            + str(self.player)[1:-1]
+        )
+    
+    @classmethod
+    def from_string(cls, s):
+        lines = s.split("\n")
+        str_edges = lines[2].replace(" ","")
+        str_player = lines[3].replace(" ","")
+        player = list(map(int, str_player.split(",")))
+        edges = str_edges.split("),(")
+        m = len(edges)
+        edges[0] = edges[0][1:]
+        edges[m-1] = edges[m-1][:-1]
+        for i in range(m):
+            edges[i] = tuple(map(int, edges[i].split(",")))
+        return(energy_game(int(lines[0]), int(lines[1]), edges, player))
+    
+    @classmethod
+    def from_file(cls, filename):
+        file = open("instances/energy/" + filename, 'r')
+        s = file.read()
+        file.close()
+        return(energy_game.from_string(s))
+    
+    
+    def save_to_file(self, filename):
+        file = open("instances/energy/" + filename, 'w+')
+        file.write(self.to_string())
+        file.close()
+    
 class parity_game:
     ''' 
     jeu de parité :
@@ -65,28 +121,32 @@ class parity_game:
         
             
     def save_to_file(self, name):
-        file = open("instances/"+name, 'w')
-        file.write(self.tostring())
+        file = open("instances/parity/" +name, 'w+')
+        file.write(self.to_string())
         file.close()
     
     @classmethod
-    def fromfile(cls, filename):
-        file = open("instances/" + filename, 'r')
-        n = int(file.readline())
-        d = int(file.readline())
-        str_edges = file.readline().replace(" ", "")
-        str_player = file.readline().replace(" ", "")
+    def from_file(cls, filename):
+        file = open("instances/parity/" + filename, 'r')
+        s = file.read()
+        file.close()
+        return parity_game.from_string(s)
+    
+    @classmethod
+    def from_string(cls, s):
+        lines = s.split("\n")
+        str_edges = lines[2].replace(" ","")
+        str_player = lines[3].replace(" ","")
         player = list(map(int, str_player.split(",")))
         edges = str_edges.split("),(")
         m = len(edges)
         edges[0] = edges[0][1:]
-        edges[m-1] = edges[m-1][:-2]
+        edges[m-1] = edges[m-1][:-1]
         for i in range(m):
-            edges[i] = tuple(map(int, edges[i].split(",")))        
-        file.close()
-        return(parity_game(n, d, edges, player))
-        
-    def tostring(self):
+            edges[i] = tuple(map(int, edges[i].split(",")))
+        return(parity_game(int(lines[0]), int(lines[1]), edges, player))
+    
+    def to_string(self):
         return(str(self.size) + '\n'
             + str(self.max_priority) + '\n'
             + str(self.edges)[1:-1] + '\n'

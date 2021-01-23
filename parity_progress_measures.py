@@ -548,11 +548,12 @@ class totally_ordered_symmetric_pm:
             [0 for h in range(self.height)]
             for i in range(self.game.size)
         ]
-        ''' TODO
-        self.is_valid = 
-        '''
+        
+        self.is_valid = [[True, True] for i in range(self.game.size)]
+        
         for i in range(self.game.size):
             self.update_dest(i)
+            self.update_validity(i)
     
         
     def update_dest(self, i, with_bound = False):
@@ -576,12 +577,23 @@ class totally_ordered_symmetric_pm:
         #update destination
         self.dest_of_vert[i] = rep
     
+    #update validity information (TODO, clean this a bit)
+    def update_validity(self, i):
+        if self.map[i] == self.dest_of_vert[i]:
+            self.is_valid[i]=[1,1]
+        else:
+            if util.is_smaller_alt_lex(self.dest_of_vert[i], self.map[i], self.height):
+                self.is_valid[i]=[1,0]
+            else:
+                self.is_valid[i]=[0,1]
+        
     def lift(self, i, with_bound = False):
         #updates value of i, and destinations of predecessors
         self.map[i] = self.dest_of_vert[i].copy()
-        for (pred, _,_) in self.game.pred[i]:
+        self.update_validity(i)
+        for (pred,_,_) in self.game.pred[i]:
             self.update_dest(pred, with_bound)
-    
+            self.update_validity(pred)
     
     #returns list of vertices in box 0,0 with dest != map
     def list_of_invalid_vertices(self):
@@ -591,3 +603,90 @@ class totally_ordered_symmetric_pm:
     def list_of_vertices_invalid_for_player(self, player):
         return([i for i in range(self.game.size) if ((util.is_smaller_alt_lex(self.dest_of_vert[i], self.map[i], self.height) + player + 1) %2) and util.is_prefix([0,0], self.map[i])])
 
+    def reset(self, box):
+        for i in range(self.game.size):
+            if(util.is_prefix(box, self.map[i])):
+                for h in range(len(box), self.height):
+                    self.map[i][h] = 0
+        for i in range(self.game.size):
+            if(util.is_prefix(box, self.map[i])):
+                self.update_dest(i)
+                self.update_validity(i)
+                for pred,_,_ in self.game.pred[i]:
+                    self.update_dest(pred)
+                    self.update_validity(pred)
+
+    #performs an update or acceleration in box, modifies
+    #the box and list_in_box in place, and returns information string
+    def next_zielonka_lift(self, box, vert_in_box, acceleration_type = 0):
+        
+        if(not(vert_in_box)): #if no vertices in the box, go to parent
+            if(box == [0,0]):
+                return("terminate", [])
+            box.pop()
+            vert_in_box = [i for i in range(self.game.size) if util.is_prefix(box, self.map[i])]
+            return("go up", vert_in_box) #could write other info here...
+        
+        d = len(box)
+        
+        #try an acceleration  (the two types should lead to same alg since we reset)
+        if(all([self.is_valid[i][d%2] for i in vert_in_box])):
+            if(d==1):
+                return("terminate", vert_in_box)
+            if(acceleration_type): #FIRST TYPE OF ACCELERATION (corrected)
+                box.pop()
+                box[d-2] += 1
+                for i in range(self.game.size):
+                    changed = False
+                    if(util.is_prefix(box, self.map[i])):
+                        self.map[i][d-1] += 1
+                        changed = True
+                    if(i in vert_in_box):
+                        self.map[i][d-2] += 1
+                        self.map[i][d-1] = 0
+                        changed = True
+                    if(changed):
+                        self.update_validity(i)
+                        for pred, _, _ in self.game.pred[i]:
+                            self.update_dest(pred)
+                            self.update_validity(pred)
+                box.pop()
+                        
+            else: #SECOND TYPE OF ACCELERATION (incorrect, needs to be fixed)
+                box.pop()
+                k=box.pop()
+                for i in range(self.game.size):
+                    if util.is_prefix(box, self.map[i]) and self.map[i][d-2] > k or i in vert_in_box:
+                        self.map[i][d-2] += 1
+                        if i in vert_in_box:
+                            self.map[i][d-1] = 0
+                        self.update_validity(i)
+                        for pred,_,_ in self.game.pred[i]:
+                            self.update_dest(pred)
+                            self.update_validity(pred)
+
+            vert_in_box = [i for i in range(self.game.size) if util.is_prefix(box, self.map[i])]
+            if(d<=2):
+                return("terminate", vert_in_box)
+            
+            return("accelerations", vert_in_box)
+        
+        #try an update
+        to_update=0
+        while(to_update < len(vert_in_box)):
+            if(self.dest_of_vert[vert_in_box[to_update]][d-1] > box[d-1]):
+                break
+            to_update += 1
+            
+        if(to_update != len(vert_in_box)):
+            self.lift(vert_in_box[to_update])
+            vert_in_box.remove(vert_in_box[to_update])
+            self.reset(box)
+            return("updates", vert_in_box)
+        
+        #go deeper
+        k = min([self.map[i][d] for i in vert_in_box])
+        vert_in_box = [i for i in vert_in_box if self.map[i][d] == k]
+        box.append(k)
+        return("dive deeper", vert_in_box)
+            

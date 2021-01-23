@@ -1,6 +1,6 @@
 import games
 import trees
-import progress_measures
+import parity_progress_measures
 import time
 import random as rand
 import util
@@ -27,11 +27,52 @@ class execution:
         print("infos:", self.infos)
         
         
+    def to_string(self):
+        return(
+            "game: " +
+            self.game.to_string() +
+            "timeout: " + str(self.timeout) +
+            "is_timeout: " + str(self.is_timeout) +
+            "solution: " + str(self.solution) +
+            "infos: " + str(self.infos)
+        )
+        
+    
+    def save_to_file(self):
+        file = open("executions/parity/"+name, 'w+')
+        file.write(self.tostring())
+        file.close()
+    
+    
+    @classmethod
+    def from_string(cls,s):
+        lines = s.split("\n")
+        str_game = lines[1] + lines[2] + lines[3] + lines[4]
+        game = games.parity_game.fromstring(str_game)
+        infos={}
+        str_infos = lines[8][8:-1].replace(" ","").split(",")
+        for inf in str_infos:
+            l = inf.split(": ")
+            if(l[0] in ["updates", "equivalent updates", "recursive calls", "accelerations"]):
+                infos[l[0]] = int(l[1])
+            elif(l[0] in ["runtime", "spent"]):
+                infos[l[0]] = float(l[1])
+            else:
+                infos[l[0]] = l[1]
+
+    @classmethod
+    def from_file(cls, filename):
+        file = open("executions/parity/" + filename, 'r')
+        s = file.read()
+        file.close()
+        return from_string(s)
+        
+        
     #performs standard pm lifting from POV of given player
     def asymmetric_lifting_standard(self, player):
         
         start_time=time.time()
-        phi = progress_measures.asym_progress_measure_standard(self.game, player)
+        phi = parity_progress_measures.asym_progress_measure_standard(self.game, player)
         
         invalid=phi.list_invalid()
         
@@ -57,7 +98,7 @@ class execution:
     def asymmetric_lifting_gliding(self, player):
         
         start_time=time.time()
-        phi = progress_measures.asym_progress_measure_gliding(self.game, player)
+        phi = parity_progress_measures.asym_progress_measure_gliding(self.game, player)
         
         invalid = phi.list_invalid()
         
@@ -85,7 +126,7 @@ class execution:
     def symmetric_lifting_strong(self):
         
         start_time = time.time()
-        phi = progress_measures.sym_progress_measure_global(self.game)  
+        phi = parity_progress_measures.sym_progress_measure_global(self.game)  
         
         #initializing full product box
         b = trees.box(trees.node_in_complete_tree(self.game.max_priority//2, self.game.size, []),
@@ -230,7 +271,7 @@ class execution:
         
         start_time = time.time()
         
-        phi = progress_measures.sym_progress_measure_local(self.game)
+        phi = parity_progress_measures.sym_progress_measure_local(self.game)
         
         outer_box = trees.box(
             trees.node_in_infinite_tree(self.game.max_priority // 2, []),
@@ -259,7 +300,7 @@ class execution:
         
         start_time = time.time()
         
-        phi = progress_measures.sym_progress_measure_no_reset(self.game)
+        phi = parity_progress_measures.sym_progress_measure_no_reset(self.game)
         
         while(True):
             
@@ -282,7 +323,7 @@ class execution:
     
     def totally_ordered_sym_arbitrary_lifts(self):
         start_time=time.time()
-        phi = progress_measures.totally_ordered_symmetric_pm(self.game)
+        phi = parity_progress_measures.totally_ordered_symmetric_pm(self.game)
         
         self.infos["algorithm"] = "finite alt-lexico pm with arbitrary updates"
         self.infos["updates"]=0
@@ -307,7 +348,7 @@ class execution:
     
     def totally_ordered_sym_increasing_lifts(self, player):
         start_time=time.time()
-        phi = progress_measures.totally_ordered_symmetric_pm(self.game)
+        phi = parity_progress_measures.totally_ordered_symmetric_pm(self.game)
         
         self.infos["algorithm"] = "finite alt-lexico pm with arbitrary updates"
         self.infos["updates"]=0
@@ -327,3 +368,32 @@ class execution:
     
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if not(phi.map[i][1])]
+        
+    
+    def totally_ordered_zielonka_like(self):
+        start_time=time.time()
+        phi = parity_progress_measures.totally_ordered_symmetric_pm(self.game)
+        
+        self.infos["algorithm"]="zielonka-like alternating lexicographic"
+        self.infos["updates"]=0
+        self.infos["dive deeper"]=0
+        self.infos["accelerations"]=0
+        self.infos["go up"]= 0
+        
+        box = [0,0]
+        vert_in_box = [i for i in range(self.game.size)]
+        while(True):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            s, vert_in_box=phi.next_zielonka_lift(box, vert_in_box)
+            if(s == "terminate"):
+                break
+            else:
+                self.infos[s] += 1
+            
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if phi.map[i][0]]
+            
