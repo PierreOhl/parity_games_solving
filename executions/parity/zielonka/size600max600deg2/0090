@@ -1,0 +1,4 @@
+timeout: 100
+is_timeout: False
+solution: [302, 316, 317, 322, 348, 352, 357, 366, 382, 386, 391, 403, 442, 449, 450, 461, 463, 478, 490, 505, 523, 532, 537, 559, 569]
+infos: {'equivalent updates': 24306, 'algorithm': 'Zielonka recursive', 'recursive calls': 228527, 'runtime': 3.385680675506592}

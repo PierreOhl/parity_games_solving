@@ -1,0 +1,4 @@
+timeout: 100
+is_timeout: False
+solution: [10, 18, 20, 21, 23, 25, 26, 27, 28, 29]
+infos: {'equivalent updates': 85, 'algorithm': 'Zielonka recursive', 'recursive calls': 80, 'runtime': 0.01245260238647461}

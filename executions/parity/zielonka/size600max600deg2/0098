@@ -1,0 +1,4 @@
+timeout: 100
+is_timeout: True
+solution: []
+infos: {'equivalent updates': 1757350, 'algorithm': 'Zielonka recursive', 'recursive calls': 2593642, 'runtime': 100.01521587371826}

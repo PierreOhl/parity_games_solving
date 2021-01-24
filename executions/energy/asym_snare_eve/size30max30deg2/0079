@@ -1,0 +1,4 @@
+timeout: 100
+is_timeout: False
+solution: [17, 20, 21, 23, 24, 25, 28, 29]
+infos: {'algorithm': 'Asymmetric snare update for Eve', 'snare updates': 3, 'spent': 0.0021581649780273438, 'equivalent updates': 18, 'runtime': 0.004248142242431641}

@@ -1,0 +1,4 @@
+timeout: 100
+is_timeout: False
+solution: [0, 2, 15, 18, 19, 20, 22, 25, 26, 27, 28, 29]
+infos: {'algorithm': 'Alternating snare update', 'snare updates': 5, 'spent': 0.0019059181213378906, 'equivalent updates': 21, 'runtime': 0.0034825801849365234}

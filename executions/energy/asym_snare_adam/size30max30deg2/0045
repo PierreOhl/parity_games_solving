@@ -1,0 +1,4 @@
+timeout: 100
+is_timeout: False
+solution: [0, 2, 3, 6, 7, 8, 9, 10, 12, 17]
+infos: {'algorithm': 'Asymmetric snare update for Adam', 'snare updates': 4, 'spent': 0.002003192901611328, 'equivalent updates': 18, 'runtime': 0.0037512779235839844}

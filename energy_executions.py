@@ -29,17 +29,17 @@ class execution:
         
     def to_string(self):
         return(
-            "game: " +
-            self.game.to_string() +
-            "timeout: " + str(self.timeout) +
-            "is_timeout: " + str(self.is_timeout) +
-            "solution: " + str(self.solution) +
+            #"game: " + "\n" +
+            #self.game.to_string() + "\n" +
+            "timeout: " + str(self.timeout) + "\n" +
+            "is_timeout: " + str(self.is_timeout) + "\n" +
+            "solution: " + str(self.solution) + "\n" +
             "infos: " + str(self.infos)
         )
     
-    def save_to_file(self):
-        file = open("executions/energy/"+name, 'w+')
-        file.write(self.tostring())
+    def save_to_file(self, filename):
+        file = open("executions/energy/" + filename, 'w+')
+        file.write(self.to_string())
         file.close()
     
     @classmethod
@@ -116,7 +116,7 @@ class execution:
         self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity != 0)]
         
     
-    def alternating_snare_update(self):   #DOES NOT TERMINATE!
+    def alternating_snare_update(self):
         
         start_time=time.time()
         phi = energy_progress_measures.progress_measure(self.game)

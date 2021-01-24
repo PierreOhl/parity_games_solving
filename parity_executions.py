@@ -29,18 +29,18 @@ class execution:
         
     def to_string(self):
         return(
-            "game: " +
-            self.game.to_string() +
-            "timeout: " + str(self.timeout) +
-            "is_timeout: " + str(self.is_timeout) +
-            "solution: " + str(self.solution) +
+            #"game: " + "\n" + 
+            #self.game.to_string() + "\n" +
+            "timeout: " + str(self.timeout) + "\n" +
+            "is_timeout: " + str(self.is_timeout) + "\n" +
+            "solution: " + str(self.solution) + "\n" +
             "infos: " + str(self.infos)
         )
         
     
-    def save_to_file(self):
-        file = open("executions/parity/"+name, 'w+')
-        file.write(self.tostring())
+    def save_to_file(self, filename):
+        file = open("executions/parity/" + filename, 'w+')
+        file.write(self.to_string())
         file.close()
     
     
@@ -147,7 +147,7 @@ class execution:
 
 
     #main recursive procedure for Zielonka algorithm
-    def zielonka_solve(self, priority, vert_set, succ, time_limit):
+    def zielonka_solve(self, priority, vert_set, time_limit):
         
         self.infos["recursive calls"]+=1
         
@@ -160,65 +160,45 @@ class execution:
         
         player = priority % 2
         
-        #compute attractor to edges of high priority
-        attr_to_priority = util.attractor_to_priority(
-            vert_set,
-            succ,
-            self.game.player,
-            priority,
-            player
-        )
+        #compute player attractor to edges of high priority
+        attr_to_priority = self.game.attr_to_prio_in_subgame(vert_set, priority)
         
         self.infos["equivalent updates"] += len(attr_to_priority)
         
-        #compute subgame
+        #compute subgame (in place)
         sub_vert_set = vert_set.difference(attr_to_priority)
-        sub_succ = deepcopy(succ)
-        for i in sub_vert_set:
-            for edge in succ[i]:
-                if(edge[1] == priority or edge[0] not in sub_vert_set):
-                    sub_succ[i].remove(edge)
-        
+
         #recursive call
         winning_for_opponent_in_subgame = self.zielonka_solve(
             priority -1,
             sub_vert_set,
-            sub_succ,
             time_limit
         )
         
         if(winning_for_opponent_in_subgame == {}):
             return(vert_set)
         
-        #compute attractor to winning
-        winning_for_opponent = util.attractor_to_set_of_vertices(
+        #compute attractor to winning set for opponent in subgame
+        winning_for_opponent = self.game.attr_in_subgame(
             vert_set,
-            succ,
-            self.game.player,
+            priority,
             winning_for_opponent_in_subgame,
             1 - player
         )
-        
+
         self.infos["equivalent updates"] += len(winning_for_opponent) - len(winning_for_opponent_in_subgame)
         
         #define rest of game
         rest_vert_set = vert_set.difference(winning_for_opponent)
-        rest_succ = deepcopy(succ)
-        for i in rest_vert_set:
-            for edge in succ[i]:
-                if(edge[0] not in rest_vert_set):
-                    rest_succ[i].remove(edge)
         
         #recursively search for winning region in rest of game
         return(
             self.zielonka_solve(
                 priority,
                 rest_vert_set,
-                rest_succ,
                 time_limit
             )
         )
-
 
     #performs Zielonka's attractor-based algorithm
     def zielonka_algorithm(self):
@@ -231,23 +211,17 @@ class execution:
         #remove attractor to sinks
         player_attr_to_opponent_sink=[{},{}]
         for player in [0,1]:
-            player_attr_to_opponent_sink[player] = util.attractor_to_set_of_vertices(
+            player_attr_to_opponent_sink[player] = self.game.attr_in_subgame(
                 {i for i in range(self.game.size)},
-                self.game.succ,
-                self.game.player,
-                {i for i in sinks if self.game.player == 1 - player},
+                self.game.max_priority,
+                {i for i in sinks if self.game.player[i] == 1 - player},
                 player
             )
+            
         remaining_vert = {i for i in range(self.game.size) if all([i not in player_attr_to_opponent_sink[pl] for pl in [0,1]])}
         
         self.infos["equivalent updates"] = self.game.size - len(remaining_vert)
-        
-        updated_succ = deepcopy(self.game.succ)
-        for i in remaining_vert:
-            for edge in self.game.succ[i]:
-                if(edge[0] not in remaining_vert):
-                    updated_succ[i].remove(edge)
-        
+    
         self.infos["algorithm"] = "Zielonka recursive"
         self.infos["recursive calls"] = 0
         
@@ -255,7 +229,6 @@ class execution:
         solution_set = self.zielonka_solve( 
             self.game.max_priority, 
             remaining_vert,
-            updated_succ,
             start_time + self.timeout
         )
         

@@ -6,45 +6,36 @@ import energy_executions
 import trees
 import util
 
+edges = [(0, 0, 6), (0, 3, 10), (1, 3, 9), (1, 2, 1), (2, 2, 7), (2, 3, 8), (3, 1, 7), (3, 0, 9)]
+g = games.parity_game(4, 10, edges, [1,1,0,0])
+g = games.parity_game.generate_random(10,2)
 
-#debug
-edges =  [(0, 1, 1), (1, 0, 2)]
-g = games.parity_game(2, 3, edges, [int(i<1) for i in range(2)])
+g_en = games.energy_game.from_parity_game(g)
 
-print(g.to_string())
-g2 = games.parity_game.from_string(g.to_string())
-g2.save_to_file("game0")
-print(g2.to_string())
+ziel = parity_executions.execution(g,100000)
+ziel.zielonka_algorithm()
+ziel.printinfos()
+print(ziel.solution)
 
-g3 = games.parity_game.from_file("game0")
-print(g3.to_string())
+snare = energy_executions.execution(g_en, 10000)
+snare.asymmetric_snare_update(0)
+snare.printinfos()
+print(snare.solution)
 
-'''
-i=0
-n=600
-max_prio=600
-timeout=50
-while(True):
-    i = i+1
-    print("instance ", i)
+
+while True:
+    g = games.parity_game.generate_random_fast(600,2,600)
     
-    g_par = util.parity_generate_random_fast(n,2,max_prio)
-    g = games.energy_game.from_parity_game(g_par)
-
-    exec_snare_eve = energy_executions.execution(g, timeout)
-    exec_snare_eve.asymmetric_snare_update(0)
-    exec_snare_eve.printinfos()
+    ziel = parity_executions.execution(g,10)
+    ziel.zielonka_algorithm()
+    ziel.printinfos()
     
-    exec_snare_adam = energy_executions.execution(g, timeout)
-    exec_snare_adam.asymmetric_snare_update(1)
-    exec_snare_adam.printinfos()
+    g_en = games.energy_game.from_parity_game(g)
+    snare = energy_executions.execution(g_en,10)
+    snare.asymmetric_snare_update(0)
+    snare.printinfos()
     
-    exec_alt = energy_executions.execution(g, timeout)
-    exec_alt.alternating_snare_update()
-    exec_alt.printinfos()
-
-    exec_ziel = parity_executions.execution(g_par, timeout)
-    exec_ziel.zielonka_algorithm()
-    exec_ziel.printinfos()
-        
-'''
+    if(ziel.solution != snare.solution):
+        print(g.edges)
+        break
+    

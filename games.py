@@ -1,4 +1,5 @@
 from copy import deepcopy
+import random as rand
 
 class energy_game:
     '''
@@ -55,6 +56,33 @@ class energy_game:
         file = open("instances/energy/" + filename, 'w+')
         file.write(self.to_string())
         file.close()
+        
+        
+    @classmethod
+    def generate_random_fast(cls, size, degree, max_absolute_value):
+        edges=[]
+        for i in range(size):
+            for h in range(degree):
+                j = rand.randrange(size)
+                w = rand.randrange(2*max_absolute_value) - max_absolute_value
+                edges.append((i,j,w))
+        player=[int(i<size//2) for i in range(size)]
+        return(energy_game(size, max_absolute_value, edges, player))
+    
+    
+    @classmethod
+    def generate_random_fast_bipartite(cls, size, degree, max_absolute_value):
+        edges=[]
+        med = size//2
+        for i in range(size):
+            for h in range(degree):
+                j = rand.randrange(med) + (i < med) * med
+                p = rand.randrange(2*max_absolute_value) - max_absolute_value
+                edges.append((i,j,p))
+        player=[int(i<med) for i in range(size)]
+        return(energy_game(size, max_absolute_value, edges, player))
+ 
+
     
 class parity_game:
     ''' 
@@ -125,6 +153,47 @@ class parity_game:
         file.write(self.to_string())
         file.close()
     
+    
+    #computes player attractor to vert_sub in subgame restricted to
+    #vert_set and priority <= max_prio_sub.
+    def attr_in_subgame(self, vert_set, max_prio_sub, target_set, player):
+        edges_out = {i:len([s in vert_set and s not in target_set and p <= max_prio_sub for (s,p) in self.succ[i]]) for i in vert_set if i not in target_set and self.player[i] != player}
+        rep = deepcopy(target_set)
+        for i in [i for i in vert_set if i not in target_set and self.player[i] != player]:
+            if edges_out[i] == 0:
+                edges_out.pop(i)
+                rep.add(i)
+        treat_pred = deepcopy(rep)
+        while(treat_pred):
+            i = treat_pred.pop()
+            for (pre,prio,_) in self.pred[i]:
+                if(prio <= max_prio_sub and pre in vert_set and pre not in rep):
+                    if(self.player[pre] == player):
+                        rep.add(pre)
+                        treat_pred.add(pre)
+                    else:
+                        edges_out[pre] -= 1
+                        if(edges_out[pre] == 0):
+                            edges_out.pop(pre)
+                            rep.add(pre)
+                            treat_pred.add(pre)
+        return(rep)
+    
+    #computes one-step player d%2 attractor to priority d in
+    #subgame restricted to vert_set and edges of priority <= d+1
+    def one_step_to_prio_in_subgame(self, vert_set, d):
+        return({i for i in vert_set if 
+            (self.player[i] == d%2      and any([p == d for (s,p) in self.succ[i] if s in vert_set]) )
+        or  (self.player[i] == (d+1)%2  and all([p == d for (s,p) in self.succ[i] if p <= d and s in vert_set]))})
+
+    
+    #computes player d%2 attractor to priority d in subgame
+    #restricted to vert_set and edges of priority <= d+1
+    def attr_to_prio_in_subgame(self, vert_set, d):
+        target_set = self.one_step_to_prio_in_subgame(vert_set, d)
+        return(self.attr_in_subgame(vert_set, d, target_set, d%2))
+    
+    
     @classmethod
     def from_file(cls, filename):
         file = open("instances/parity/" + filename, 'r')
@@ -175,3 +244,59 @@ class parity_game:
         player = [(i // width + i + 1) % 2 for i in range(size)]
         return(parity_game(size, even_top_priority, edges, player))
     
+    
+    @classmethod
+    def generate_random(cls, size, average_deg):
+        edges=[]
+        for i in range(size):
+            j = rand.randrange(size)
+            p = rand.randrange(size) +1
+            edges.append((i,j,p))
+        if(average_deg > 1):    
+            invproba = size * size // (average_deg-1)
+            for i in range(size):
+                for j in range(size):
+                    for p in range(1,size+1):
+                        r = rand.randrange(invproba)
+                        if(r==0):
+                            edges.append((i,j,p))
+        eve=[int(i<size//2) for i in range(size)]
+        return(parity_game(size, size, edges, eve))
+    
+    
+    @classmethod
+    def generate_random_fast(cls, size, degree, max_prio):
+        edges=[]
+        for i in range(size):
+            for h in range(degree):
+                j = rand.randrange(size)
+                p = rand.randrange(max_prio) +1
+                edges.append((i,j,p))
+        player=[int(i<size//2) for i in range(size)]
+        return(parity_game(size, max_prio, edges, player))
+    
+    
+    @classmethod
+    def generate_random_fast_bipartite(cls, size, degree, max_prio):
+        edges=[]
+        med = size//2
+        for i in range(size):
+            for h in range(degree):
+                j = rand.randrange(med) + (i < med) * med
+                p = rand.randrange(max_prio) +1
+                edges.append((i,j,p))
+        player=[int(i<med) for i in range(size)]
+        return(parity_game(size, max_prio, edges, player))
+
+    
+    @classmethod
+    def generate_random_fast_bipartite_opponent_edges(cls, size, degree, max_prio):
+        edges=[]
+        med = size//2
+        for i in range(size):
+            for h in range(degree):
+                j = rand.randrange(med) + (i < med) * med
+                p = 2*(rand.randrange(max_prio//2)) + (i<med) +1
+                edges.append((i,j,p))
+        player=[int(i<med) for i in range(size)]
+        return(parity_game(size, max_prio, edges, player))

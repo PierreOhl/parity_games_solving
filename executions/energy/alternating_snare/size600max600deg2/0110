@@ -1,0 +1,4 @@
+timeout: 100
+is_timeout: False
+solution: []
+infos: {'algorithm': 'Alternating snare update', 'snare updates': 8, 'spent': 3.7207915782928467, 'equivalent updates': 1013, 'runtime': 5.569409132003784}

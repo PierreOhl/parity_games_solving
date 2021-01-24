@@ -1,0 +1,4 @@
+timeout: 100
+is_timeout: False
+solution: [302, 304, 310, 317, 323, 331, 334, 338, 347, 438, 472, 485, 509, 552, 562, 565]
+infos: {'algorithm': 'Alternating snare update', 'snare updates': 10, 'spent': 6.021005153656006, 'equivalent updates': 1145, 'runtime': 8.634638786315918}
