@@ -13,9 +13,9 @@ class energy_game:
         self.succ = [[] for i in range(n)]
         self.pred = [[] for i in range(n)]
         self.max_absolute_value = max_absolute_value
-        for t in edges:
-            self.pred[t[1]].append((t[0],t[2], len(self.succ[t[0]])))
-            self.succ[t[0]].append((t[1],t[2]))
+        for edge_ind in range(self.number_edges):
+            self.pred[edges[edge_ind][1]].append((edges[edge_ind][0], edge_ind))
+            self.succ[edges[edge_ind][0]].append((edges[edge_ind][1], edge_ind))
     
     @classmethod
     def from_parity_game(cls, parity_game):
@@ -81,6 +81,35 @@ class energy_game:
                 edges.append((i,j,p))
         player=[int(i<med) for i in range(size)]
         return(energy_game(size, max_absolute_value, edges, player))
+    
+    
+    @classmethod
+    def DKZ19_worst_case(cls, n): 
+        #{0,...,n-1}={x_1,...,x_n} ; n = v ; {n+1 ,...,2n}={y_1,...,y_n} ;  2n+1 = u
+        size = 2 * n + 2
+        max_absolute_value = 3 * 2**n - 3
+        player=[0 for i in range(n+1)] + [1 for i in range(n+1)]
+        edges = [(i, i+1, 0) for i in range(n)] + [(n+i+1, n+i+2, 0) for i in range(n)] #Change the first to -1 for something more difficult
+        edges.append((0,n+2,-(3-2))) #x_i-> y_{i+1}
+        edges.append((n+1, 1 , 3-2 )) #y_i-> x_{i+1}
+        for i in range(1,n):
+            edges.append((i,n+i+2,-(3*2**i-2))) #x_i-> y_{i+1}
+            edges.append((n+i+1, i+1 , 3*2**i-2 )) #y_i-> x_{i+1}
+            edges.append((n+i+1, n+1 , 3*2**(i-1)-1 )) #y_i-> y_1
+        edges.append((n,n,-1))
+        edges.append((n, 2 * n + 1, -(3 * (2**n) - 3)))
+        edges.append((2 * n + 1, 2 * n + 1, 1))
+        edges.append((n+1, 0, 0))
+        return(energy_game(size, max_absolute_value, edges, player))
+    
+    
+    @classmethod
+    def cycle_game(cls, size):
+        max_absolute_value = 1
+        edges = [(i,i+1,-1) for i in range(size-1)]
+        edges.append((0,0,1))
+        player = [0 for i in range(size)]
+        return(energy_game(size, max_absolute_value, edges, player))
  
 
     
@@ -99,11 +128,10 @@ class parity_game:
             - edges liste des arrêtes
             
             - succ table des successeurs (redondant)
-                -> succ[i] est une liste de tuples (sommet', priorité)
+                -> succ[i] est une liste de tuples (sommet', edge_ind)
             
             - pred table des successeurs (redondant)
-                -> pred[i] est une liste de triplets (sommet, priorité, ind),
-                où ind est l'indice dans succ[sommet] de l'arrête (i, sommet, priorité)
+                -> pred[i] est une liste de triplets (sommet, edge_ind)
                 
             - player est une liste de 0,1 de taille n
     '''
@@ -116,9 +144,9 @@ class parity_game:
         self.player = player
         self.succ = [[] for i in range(n)]
         self.pred = [[] for i in range(n)]
-        for t in edges:
-            self.pred[t[1]].append((t[0],t[2], len(self.succ[t[0]])))
-            self.succ[t[0]].append((t[1],t[2]))
+        for edge_ind in range(self.number_edges):
+            self.pred[edges[edge_ind][1]].append((edges[edge_ind][0], edge_ind))
+            self.succ[edges[edge_ind][0]].append((edges[edge_ind][1], edge_ind))
 
         
         
@@ -157,7 +185,7 @@ class parity_game:
     #computes player attractor to vert_sub in subgame restricted to
     #vert_set and priority <= max_prio_sub.
     def attr_in_subgame(self, vert_set, max_prio_sub, target_set, player):
-        edges_out = {i:len([s in vert_set and s not in target_set and p <= max_prio_sub for (s,p) in self.succ[i]]) for i in vert_set if i not in target_set and self.player[i] != player}
+        edges_out = {i:len([s in vert_set and s not in target_set and self.edges[edge_ind][2] <= max_prio_sub for (s,edge_ind) in self.succ[i]]) for i in vert_set if i not in target_set and self.player[i] != player}
         rep = deepcopy(target_set)
         for i in [i for i in vert_set if i not in target_set and self.player[i] != player]:
             if edges_out[i] == 0:
@@ -166,8 +194,8 @@ class parity_game:
         treat_pred = deepcopy(rep)
         while(treat_pred):
             i = treat_pred.pop()
-            for (pre,prio,_) in self.pred[i]:
-                if(prio <= max_prio_sub and pre in vert_set and pre not in rep):
+            for (pre,edge_ind) in self.pred[i]:
+                if(self.edges[edge_ind][2] <= max_prio_sub and pre in vert_set and pre not in rep):
                     if(self.player[pre] == player):
                         rep.add(pre)
                         treat_pred.add(pre)
@@ -183,8 +211,8 @@ class parity_game:
     #subgame restricted to vert_set and edges of priority <= d+1
     def one_step_to_prio_in_subgame(self, vert_set, d):
         return({i for i in vert_set if 
-            (self.player[i] == d%2      and any([p == d for (s,p) in self.succ[i] if s in vert_set]) )
-        or  (self.player[i] == (d+1)%2  and all([p == d for (s,p) in self.succ[i] if p <= d and s in vert_set]))})
+            (self.player[i] == d%2      and any([self.edges[edge_ind][2] == d for (s,edge_ind) in self.succ[i] if s in vert_set]) )
+        or  (self.player[i] == (d+1)%2  and all([self.edges[edge_ind][2] == d for (s,edge_ind) in self.succ[i] if self.edges[edge_ind][2] <= d and s in vert_set]))})
 
     
     #computes player d%2 attractor to priority d in subgame
@@ -245,6 +273,75 @@ class parity_game:
         return(parity_game(size, even_top_priority, edges, player))
     
     
+    @classmethod
+    def Friedmann09(cls, n): #MAX-parity
+        #vertices = [b, a, d, e, f, g, h, k , s, r, p, q, c]
+        #b_0=0, a_0=2n, d_0=4n, e_0=5n, f_0=6n, g_0=7n, h_0=8n, k_0=9n, s=10n, r=10n+1, p=10n+2, q=10n+3 c=10n+4
+        #priorities in outgoing edges
+        a_0=2*n
+        d_0=4*n
+        e_0=5*n
+        f_0=6*n
+        g_0=7*n
+        h_0=8*n 
+        k_0=9*n
+        s=10*n
+        r=10*n+1
+        p=10*n+2
+        q=10*n+3 
+        c=10*n+4
+        size = 10*n+5
+        even_top_priority = 12*n + 8
+        player = [0 for i in range(2*n)]+[1 for i in range(2*n)] #b and a
+        player = player + [0 for i in range(n)] + [1 for i in range(2*n)] #d, e and f
+        player = player + [0 for i in range(n)] + [1 for i in range(n)] + [0 for i in range(n)]#g, h and k
+        player = player + [0 ,0, 1, 1, 0] #s, r, p, q and c
+        #edges from b_0
+        edges=[(0,s, 4*n+3), (0,r, 4*n+3), (0,c, 4*n+3)] 
+        #From c to {s,r}
+        edges.append((c,s, 8*n + 4))
+        edges.append((c,r, 8*n + 4))
+        #From {s,r} to p
+        edges.append((s,p,2))
+        edges.append((r,p, 8*n+6))
+        for i in range(1,2*n):
+            #From b_i
+            edges.append((i,i-1,4*n+2*i+3))
+            edges.append((i,s,4*n+2*i+3))
+            edges.append((i,r,4*n+2*i+3))
+            #From a_i-1
+            edges.append((a_0+i-1,i-1,4*n+2*i+4))
+        edges.append((a_0+2*n-1,2*n-1,4*n+4*n+4)) #Last one for a_i
+        for i in range(n):
+            #From s to f_i
+            edges.append((s,f_0+i,2))
+            #From r to g_i
+            edges.append((r,g_0+i,8*n+6))
+            #From d_i 
+            edges.append((d_0+i,s,4*i+3))
+            edges.append((d_0+i,r,4*i+3))
+            edges.append((d_0+i,e_0+i,4*i+3))
+            for j in range(2*i+2):
+                edges.append((d_0+i,a_0+j,4*i+3))
+            #From e_i
+            edges.append((e_0+i,d_0+i,4*i+4))
+            edges.append((e_0+i,h_0+i,4*i+4))
+            #From g_i
+            edges.append((g_0+i,f_0+i,4*i+6))
+            edges.append((g_0+i,k_0+i,4*i+6))
+            #From k_i
+            edges.append((k_0+i,p,8*n+4*i+7))
+            for j in range(i+1,n):
+                edges.append((k_0+i,g_0+j,8*n+4*i+7))
+            #From f_i
+            edges.append((f_0+i,e_0+i,8*n+4*i+9))
+            #From h_i
+            edges.append((h_0+i,k_0+i,8*n+4*i+10))
+        edges.append((q,q,1))
+        edges.append((p,q,12*n+8))
+        return(parity_game(size, even_top_priority, edges, player))
+    
+
     @classmethod
     def generate_random(cls, size, average_deg):
         edges=[]

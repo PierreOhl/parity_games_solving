@@ -101,7 +101,7 @@ class execution:
         self.infos["spent"] = 0
         self.infos["equivalent updates"] = 0
         
-        while(any([phi.dest[i] * (-1)**player > phi.map[i] * (-1)**player and phi.map[i].times_infinity * (-1)**player < 1 for i in range(self.game.size)])):
+        while(any([phi.dest_of_vert[i] * (-1)**player > phi.map[i] * (-1)**player and phi.map[i].times_infinity * (-1)**player < 1 for i in range(self.game.size)])):
             
             if(time.time() > start_time + self.timeout):
                 self.is_timeout = True

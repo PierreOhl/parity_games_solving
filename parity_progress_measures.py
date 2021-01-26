@@ -24,7 +24,7 @@ class asym_progress_measure_standard:
 
     def compute_destination(self, i):
         rep = trees.position_in_complete_tree(self.height, self.game.size)
-        pos_list=[self.map[suc[0]].min_source_for_valid_edge(self.player, suc[1]) for suc in self.game.succ[i]] #suc[0]=successor, suc[1]=priority
+        pos_list=[self.map[suc].min_source_for_valid_edge(self.player, self.game.edges[edge_ind][2]) for (suc, edge_ind) in self.game.succ[i]]
         if self.game.player[i] == self.player:
             #compute a min
             rep.set_to_top()
@@ -40,12 +40,12 @@ class asym_progress_measure_standard:
             return(rep)
         
     def update_destination_of_predecessors(self,i):
-        for (predecessor, priority) in self.game.pred[i]:
+        for (predecessor, _) in self.game.pred[i]:
             self.destination[predecessor] = self.compute_destination(predecessor)
 
     def lift(self,i):
         self.map[i] = self.destination[i]
-        for (predecessor, priority,_) in self.game.pred[i] :
+        for (predecessor,_) in self.game.pred[i] :
             self.destination[predecessor] = self.compute_destination(predecessor)
 
     def list_invalid(self):
@@ -71,7 +71,7 @@ class asym_progress_measure_gliding:
         
     def compute_destination(self, i):
         rep = trees.position_in_infinite_tree(self.height)
-        pos_list=[self.map[suc[0]].min_source_for_valid_edge(self.player, suc[1]) for suc in self.game.succ[i]] #suc[0]=successor, suc[1]=priority
+        pos_list=[self.map[suc].min_source_for_valid_edge(self.player, self.game.edges[edge_ind][2]) for (suc, edge_ind) in self.game.succ[i]]
         if self.game.player[i] == self.player:
             #compute a min
             rep.set_to_top()
@@ -88,7 +88,7 @@ class asym_progress_measure_gliding:
         
     
     def update_destination_of_predecessors(self,i):
-        for (predecessor, priority) in self.game.pred[i]:
+        for (predecessor, _) in self.game.pred[i]:
             self.destination[predecessor] = self.compute_destination(predecessor)
             
     
@@ -97,7 +97,7 @@ class asym_progress_measure_gliding:
         
         #lift i
         self.map[i] = self.destination[i]
-        for (predecessor, _, _) in self.game.pred[i] :
+        for (predecessor, _) in self.game.pred[i] :
             self.destination[predecessor] = self.compute_destination(predecessor)
 
         #move returns true if i was the last in its subset
@@ -132,7 +132,7 @@ class asym_progress_measure_gliding:
                 
                 if(should_glide):
                     self.map[vert] = deepcopy(arrival_of_glide)
-                    for (predecessor, _, _) in self.game.pred[vert] :
+                    for (predecessor, _) in self.game.pred[vert] :
                         self.destination[predecessor] = self.compute_destination(predecessor)
                     
                     self.partition.move(vert, arrival_of_glide)
@@ -249,7 +249,7 @@ class sym_progress_measure_local:
         rep = []
         for player in (0,1):
             #we also compare to upper, should not be needed
-            pos_list=[self.pair[player][suc[0]].min_source_for_valid_edge_with_bound(player, suc[1], box.pair[player].first_not_in_subtree()) for suc in self.game.succ[i] if suc[0] in in_box] #suc[0]=successor, suc[1]=priority
+            pos_list=[self.pair[player][suc[0]].min_source_for_valid_edge_with_bound(player, self.game.edges[edge_ind][2], box.pair[player].first_not_in_subtree()) for (suc, edge_ind) in self.game.succ[i] if suc in in_box]
             if self.game.player[i] == player:
                 #compute a min
                 rep_player = box.pair[player].first_not_in_subtree()
@@ -343,8 +343,8 @@ class sym_progress_measure_no_reset:
         ]
         self.dest_of_outgoing_edge = [
             [
-                [int(h == p) for h in range(self.height)] #this has just a one at the right position
-                for (j, p) in self.game.succ[i]
+                [int(h == self.game.edges[edge_ind][2]) for h in range(self.height)] #this has just a one at the right position
+                for (_, edge_ind) in self.game.succ[i]
             ]
             for i in range(game.size)
         ]
@@ -365,7 +365,8 @@ class sym_progress_measure_no_reset:
         #updating dest_of_vert
         self.update_dest_of_vert(i)
         #updating it for predecessors
-        for (pred_vert, p, index_of_edge) in self.game.pred[i]:
+        for (pred_vert, index_of_edge) in self.game.pred[i]:
+            (_,p,_) = self.game.edges[index_of_edge]
             for h in range(p+1):
                 self.dest_of_outgoing_edge[pred_vert][index_of_edge][h] = self.map[i][h] + (h==p)
             self.update_validity(pred_vert)
@@ -558,7 +559,7 @@ class totally_ordered_symmetric_pm:
         
     def update_dest(self, i, with_bound = False):
         #compute destination for each outgoing edge
-        dest_of_outgoing_edge = [self.map[succ].copy() for (succ,_) in self.game.succ[i]]
+        dest_of_outgoing_edge = [self.map[succ].copy() for (succ,_) in self.game.succ[i]]  #deprecated line, TODO: update
         for e in range(len(dest_of_outgoing_edge)):
             p = self.game.succ[i][e][1]
             if(with_bound):
@@ -591,7 +592,7 @@ class totally_ordered_symmetric_pm:
         #updates value of i, and destinations of predecessors
         self.map[i] = self.dest_of_vert[i].copy()
         self.update_validity(i)
-        for (pred,_,_) in self.game.pred[i]:
+        for (pred,_) in self.game.pred[i]:
             self.update_dest(pred, with_bound)
             self.update_validity(pred)
     
@@ -612,7 +613,7 @@ class totally_ordered_symmetric_pm:
             if(util.is_prefix(box, self.map[i])):
                 self.update_dest(i)
                 self.update_validity(i)
-                for pred,_,_ in self.game.pred[i]:
+                for pred,_ in self.game.pred[i]:
                     self.update_dest(pred)
                     self.update_validity(pred)
 
@@ -647,7 +648,7 @@ class totally_ordered_symmetric_pm:
                         changed = True
                     if(changed):
                         self.update_validity(i)
-                        for pred, _, _ in self.game.pred[i]:
+                        for pred, _ in self.game.pred[i]:
                             self.update_dest(pred)
                             self.update_validity(pred)
                 box.pop()
@@ -661,7 +662,7 @@ class totally_ordered_symmetric_pm:
                         if i in vert_in_box:
                             self.map[i][d-1] = 0
                         self.update_validity(i)
-                        for pred,_,_ in self.game.pred[i]:
+                        for pred,_ in self.game.pred[i]:
                             self.update_dest(pred)
                             self.update_validity(pred)
 
