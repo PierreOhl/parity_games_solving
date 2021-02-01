@@ -101,6 +101,8 @@ class execution:
         self.infos["spent"] = 0
         self.infos["equivalent updates"] = 0
         
+        phi.globally_update_info()
+        
         while(any([phi.dest_of_vert[i] * (-1)**player > phi.map[i] * (-1)**player and phi.map[i].times_infinity * (-1)**player < 1 for i in range(self.game.size)])):
             
             if(time.time() > start_time + self.timeout):
@@ -116,6 +118,34 @@ class execution:
         self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity != 0)]
         
     
+    def fast_asymmetric_snare_update(self, player):
+        
+        start_time=time.time()
+        phi = energy_progress_measures.progress_measure(self.game)
+        
+        self.infos["algorithm"] = "Fast asymmetric snare update for " + ["Eve", "Adam"][player]
+        self.infos["snare updates"] = 0
+        self.infos["time of updating info"]= 0
+        
+        phi.fast_globally_update_info()
+        
+        while(any([not(phi.validity_of_vert[i][1-player]) and phi.map[i].times_infinity * (-1)**player < 1 for i in range(self.game.size)])):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            phi.fast_snare_lift(player)
+            self.infos["snare updates"] += 1
+            
+            now = time.time()
+            phi.fast_globally_update_validity()
+            self.infos["time of updating info"] += time.time() - now
+        
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity != 0)]
+        
+    
     def alternating_snare_update(self):
         
         start_time=time.time()
@@ -125,6 +155,8 @@ class execution:
         self.infos["snare updates"] = 0
         self.infos["spent"] = 0
         self.infos["equivalent updates"] = 0
+        
+        phi.globally_update_info()
         
         player=0
         while(any([phi.map[i].times_infinity == 0 for i in range(self.game.size)])):
@@ -138,6 +170,33 @@ class execution:
             self.infos["equivalent updates"] += u
             self.infos["spent"] += s
             player = 1 - player
+        
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity == 1)]
+        
+    
+    def fast_alternating_snare_update(self):
+        
+        start_time=time.time()
+        phi = energy_progress_measures.progress_measure(self.game)
+        
+        self.infos["algorithm"] = "Fast alternating snare update"
+        self.infos["snare updates"] = 0
+        
+        phi.fast_globally_update_info()
+        
+        player=0
+        while(any([phi.map[i].times_infinity == 0 for i in range(self.game.size)])):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            phi.fast_snare_lift(player)
+            self.infos["snare updates"] += 1
+            player = 1 - player
+            phi.fast_globally_update_validity()
+        
         
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity == 1)]

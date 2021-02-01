@@ -1,6 +1,6 @@
 from copy import deepcopy
 import random as rand
-
+import os
 class energy_game:
     '''
     energy game blabla
@@ -112,7 +112,78 @@ class energy_game:
         return(energy_game(size, max_absolute_value, edges, player))
  
 
+
+class parity_game_priorities_on_vertices:
+    '''
     
+    '''
+    def __init__(self, n, d, edges, player, priorities):
+        self.size = n
+        self.max_priority = d
+        self.edges = edges
+        self.number_edges = len(edges)
+        self.player = player
+        self.priorities = priorities
+        self.succ = [[] for i in range(n)]
+        for edge_ind in range(self.number_edges):
+            self.succ[edges[edge_ind][0]].append((edges[edge_ind][1]))
+            
+
+    def to_string(self):
+        rep="parity " + str(self.size) +";\n"
+        for i in range(self.size):
+            rep += str(i) + " " + str(self.priorities[i]) + " " + str(self.player[i]) + " "
+            for j in range(len(self.succ[i])):
+                rep+=str(self.succ[i][j])
+                if(j < len(self.succ[i]) -1):
+                    rep+=","
+                else:
+                    rep+=";\n"
+        return(rep[:-1])
+    
+    def save_to_file(self, filename):
+        dir_name = "instances/parity_vertices/size" + str(self.size) + "deg" + str(int(self.number_edges // (self.size))) + "max" + str(self.max_priority)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        f= open(dir_name + "/" + filename, "w+")
+        f.write(self.to_string())
+        f.close()
+    
+    @classmethod
+    def generate_random(cls,size, max_priority, degree):
+        edges=[]
+        priorities=[]
+        player=[int(i<size//2) for i in range(size)]
+        for i in range(size):
+            priorities.append(rand.randrange(max_priority+1))
+            for suc in range(degree):
+                edges.append((i, rand.randrange(size)))
+        return(parity_game_priorities_on_vertices(size, max_priority, edges, player, priorities))
+    
+    @classmethod
+    def generate_random_bipartite(cls, size, max_priority, degree):
+        edges=[]
+        priorities=[]
+        med=size//2
+        player=[int(i<size//2) for i in range(size)]
+        for i in range(size):
+            priorities.append(rand.randrange(max_priority +1))
+            for suc in range(degree):
+                edges.append((i, rand.randrange(size//2) + med * (i<med)))
+        return(parity_game_priorities_on_vertices(size, max_priority, edges, player, priorities))
+    
+    @classmethod
+    def generate_random_bipartite_all_priorities(cls, size, degree):
+        edges=[]
+        med=size//2
+        priorities=[2*i for i in range(med)] + [2*i+1 for i in range(size - med)]
+        player=[int(i<med) for i in range(size)]
+        for i in range(size):
+            for suc in range(degree):
+                edges.append((i, rand.randrange(size//2) + med * (i<med)))
+        return(parity_game_priorities_on_vertices(size, size, edges, player, priorities))
+    
+
 class parity_game:
     ''' 
     jeu de parité :
@@ -136,6 +207,7 @@ class parity_game:
             - player est une liste de 0,1 de taille n
     '''
 
+
     def __init__(self, n, d, edges, player):
         self.size = n
         self.max_priority = d
@@ -148,7 +220,6 @@ class parity_game:
             self.pred[edges[edge_ind][1]].append((edges[edge_ind][0], edge_ind))
             self.succ[edges[edge_ind][0]].append((edges[edge_ind][1], edge_ind))
 
-        
         
     #returns games in min parity semantic, reversing and turning
     # 1,..., d into 2,..., d+1 (leaving room in 0,1 for "tops")
@@ -207,6 +278,7 @@ class parity_game:
                             treat_pred.add(pre)
         return(rep)
     
+    
     #computes one-step player d%2 attractor to priority d in
     #subgame restricted to vert_set and edges of priority <= d+1
     def one_step_to_prio_in_subgame(self, vert_set, d):
@@ -229,6 +301,7 @@ class parity_game:
         file.close()
         return parity_game.from_string(s)
     
+    
     @classmethod
     def from_string(cls, s):
         lines = s.split("\n")
@@ -242,6 +315,13 @@ class parity_game:
         for i in range(m):
             edges[i] = tuple(map(int, edges[i].split(",")))
         return(parity_game(int(lines[0]), int(lines[1]), edges, player))
+    
+    
+    @classmethod
+    def from_priority_on_vertices(cls, game):
+        edges = [(i,j,game.priorities[i]) for (i,j) in game.edges]
+        return(parity_game(game.size, game.max_priority, edges, game.player))
+    
     
     def to_string(self):
         return(str(self.size) + '\n'

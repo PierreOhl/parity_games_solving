@@ -149,7 +149,9 @@ class execution:
     #main recursive procedure for Zielonka algorithm
     def zielonka_solve(self, priority, vert_set, time_limit):
         
-        self.infos["recursive calls"]+=1
+        self.infos["recursive calls"] += 1
+        if(priority == self.game.max_priority):
+            self.infos["iterations"] += 1
         
         if(time.time() > time_limit):
             self.is_timeout = True
@@ -224,6 +226,7 @@ class execution:
     
         self.infos["algorithm"] = "Zielonka recursive"
         self.infos["recursive calls"] = 0
+        self.infos["iterations"] = 0
         
         #call to main recursive procedure
         solution_set = self.zielonka_solve( 

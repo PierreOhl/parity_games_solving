@@ -8,12 +8,14 @@ number_of_instances=200
 
 number_of_algorithms = 2
 
-logscale = [False, False]
+display_axis_and_title = False
+
+logscale = [False, True]
 
 typs = ("energy", "parity")
 algs = ("asym_snare_eve", "zielonka")
 
-param = ("runtime", "runtime")
+param = ("equivalent updates", "equivalent updates")
 
 instances = [i for i in range(number_of_instances)]
 
@@ -34,6 +36,9 @@ timeouts = [any([transcripts[alg_ind][inst].is_timeout for alg_ind in range(numb
 
 plt.rcParams["axes.titlesize"] = 8
 
+print("average:", sum([transcripts[0][inst].infos["snare updates"] for inst in range(number_of_instances)]) /number_of_instances)
+print("max:", max([transcripts[0][inst].infos["snare updates"] for inst in range(number_of_instances)]))
+
 axis_no_timeout = [[transcripts[alg_ind][inst].infos[param[alg_ind]] for inst in range(number_of_instances) if not(timeouts[inst])] for alg_ind in range(number_of_algorithms)]
 axis_timeout = [[transcripts[alg_ind][inst].infos[param[alg_ind]] for inst in range(number_of_instances) if timeouts[inst]] for alg_ind in range(number_of_algorithms)]
 
@@ -46,9 +51,9 @@ if(logscale[1]):
 plt.plot(axis_no_timeout[0], axis_no_timeout[1], "ro")
 plt.plot(axis_timeout[0], axis_timeout[1], "r^")
 
-plt.title(algs[0] + " " + param[0] + " vs " + algs[1] + " " + param[1] + " on " + str(number_of_instances) + " instances of size" + " " + str(size))
-
-plt.xlabel(algs[0] + " " + param[0] + ["", " (logscale)"][logscale[0]])
-plt.ylabel(algs[1] + " " + param[1] + ["", " (logscale)"][logscale[1]])
+if display_axis_and_title:
+    plt.title(algs[0] + " " + param[0] + " vs " + algs[1] + " " + param[1] + " on " + str(number_of_instances) + " instances of size" + " " + str(size))
+    plt.xlabel(algs[0] + " " + param[0] + ["", " (logscale)"][logscale[0]])
+    plt.ylabel(algs[1] + " " + param[1] + ["", " (logscale)"][logscale[1]])
 
 plt.savefig("some_plots/" + algs[0] + "_" + param[0] + ["", "(logscale)" ][logscale[0]] + "_vs_" + algs[1] + "_" + param[1] + ["", "(logscale)" ][logscale[1]] + "_on_" + str(number_of_instances) + "_instances_of_size" + "_" + str(size))

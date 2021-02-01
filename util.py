@@ -34,38 +34,57 @@ class possibly_infinite_integer:
     
     def __add__(self, b):
         if(type(b) is int):
-            return(possibly_infinite_integer(self.value + b, self.times_infinity))
-        return(possibly_infinite_integer(self.value + b.value, truncate_to_one(b.times_infinity + self.times_infinity)))
-    
-    def __mul__(self, b):
-        if(type(b) is int):
-            return(possibly_infinite_integer(self.value * b, truncate_to_one(b * self.times_infinity)))
-        return(possibly_infinite_integer(self.value * b.value, truncate_to_one(self.value * b.times_infinity)))
+            if(self.times_infinity):
+                return(possibly_infinite_integer(0,self.times_infinity))
+            return(possibly_infinite_integer(self.value + b))
+        infval = truncate_to_one(b.times_infinity + self.times_infinity)
+        if(infval):
+            return(possibly_infinite_integer(0, infval))
+        return(possibly_infinite_integer(self.value + b.value))
     
     def __sub__(self, b):
         if(type(b) is int):
-            return(possibly_infinite_integer(self.value - b, self.times_infinity))
-        return(possibly_infinite_integer(self.value - b.value, truncate_to_one(self.times_infinity - b.times_infinity)))
-        
+            if(self.times_infinity):
+                return(possibly_infinite_integer(0, self.times_infinity))
+            return(possibly_infinite_integer(self.value - b))
+        if(self.times_infinity):
+            infval = self.times_infinity
+        else:
+            infval = - b.times_infinity
+        if(infval):
+            return(possibly_infinite_integer(0, infval))
+        return(possibly_infinite_integer(self.value - b.value))
+    
+    def __mul__(self, b):
+        if(type(b) is int):
+            if(self.times_infinity):
+                return(possibly_infinite_integer(0, truncate_to_one(b*self.times_infinity))) #infinity absorbs 0 (should not be reached either way)
+            return(possibly_infinite_integer(self.value * b, 0))
+        infval = truncate_to_one(self.value * b.times_infinity)
+        if(infval):
+            return(possibly_infinite_integer(0,infval))
+        return(possibly_infinite_integer(self.value * b.value))
+    
+    
     def __lt__(self, b):
         if(type(b) is int):
             return(self.times_infinity == -1 or self.value < b)
-        return(self.times_infinity < b.times_infinity or (self.value < b.value and self.times_infinity == 0 and b.times_infinity == 0))
+        return(self.times_infinity < b.times_infinity or (self.times_infinity == 0 and b.times_infinity == 0 and self.value < b.value))
     
     def __gt__(self, b):
         if(type(b) is int):
             return(self.times_infinity == 1 or self.value > b)
-        return(self.times_infinity > b.times_infinity or (self.value > b.value and self.times_infinity == 0 and b.times_infinity == 0))
+        return(self.times_infinity > b.times_infinity or (self.times_infinity == 0 and b.times_infinity == 0 and self.value > b.value))
     
     def __le__(self, b):
         if(type(b) is int):
-            return(self.times_infinity == -1 or self.value <= b)
-        return(self.times_infinity == -1 or self.value <= b.value or b.times_infinity == 1)
+            return(self.times_infinity == -1 or (self.times_infinity == 0 and self.value <= b))
+        return(self.times_infinity == -1 or b.times_infinity == 1 or (self.times_infinity == 0 and b.times_infinity == 0 and self.value <= b.value))
     
     def __ge__(self, b):
         if(type(b) is int):
-            return(self.times_infinity == 1 or self.value >= b)
-        return(self.times_infinity == 1 or self.value >= b.value or b.times_infinity == -1)
+            return(self.times_infinity == 1 or (self.times_infinity == 0 and self.value >= b))
+        return(self.times_infinity == 1 or b.times_infinity == -1 or (self.times_infinity == 0 and b.times_infinity == 0 and self.value >= b.value))
     
 class partition_plus_node_data:
     '''
@@ -148,3 +167,24 @@ def is_smaller_alt_lex(map1, map2, height):
         else:
             return(((map1[h] > map2[h]) + h) % 2)
     return(True)
+
+#compues first component of minimal elt
+#on second component. If player is 1, then
+#computes max instead.
+#if list is empty, returns None
+def argmin(li, player):
+    if(len(li)==0):
+        return(None)
+    ind_min=0
+    mi=li[0][1]
+    for i in range(1,len(li)):
+        if(player):
+            if(li[i][1] > mi):
+                mi = li[i][1]
+                ind_min = i
+        else:
+            if(li[i][1] < mi):
+                mi = li[i][1]
+                ind_min = i
+    return(li[ind_min][0])
+        
