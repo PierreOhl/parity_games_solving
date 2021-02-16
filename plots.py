@@ -1,21 +1,25 @@
 import matplotlib.pyplot as plt
 import transcript
 
-size = 600
-max_param = 600
+size = 25000
+max_param = 25000
 deg = 2
-number_of_instances=200
+number_of_instances=100
+
+display_diagonal = True
 
 number_of_algorithms = 2
 
-display_axis_and_title = False
+display_axis_and_title = True
+
+labels_on_vertices = True
 
 logscale = [False, True]
 
-typs = ("energy", "parity")
-algs = ("asym_snare_eve", "zielonka")
+typs = ("energy", "oink")
+algs = ("fast_alternating_snare", "uzlk")
 
-param = ("equivalent updates", "equivalent updates")
+param = ("runtime", "runtime")
 
 instances = [i for i in range(number_of_instances)]
 
@@ -23,21 +27,37 @@ transcripts = ([],[])
 
 for inst in instances:
     for alg_ind in range(number_of_algorithms):
-        transcripts[alg_ind].append(transcript.transcript.from_file(
-            typs[alg_ind],
-            algs[alg_ind],
-            size,
-            max_param,
-            deg,
-            inst
-        ))
+        if(typs[alg_ind] != "oink"):
+            if(labels_on_vertices):
+                transcripts[alg_ind].append(transcript.transcript.from_file(
+                typs[alg_ind],
+                "on_vert/" + algs[alg_ind],
+                size,
+                max_param,
+                deg,
+                inst
+            ))
+            else:
+                transcripts[alg_ind].append(transcript.transcript.from_file(
+                typs[alg_ind],
+                algs[alg_ind],
+                size,
+                max_param,
+                deg,
+                inst
+            ))
+        else:
+            transcripts[alg_ind].append(transcript.transcript.from_oink(
+                "uzlk",
+                size, 
+                max_param, 
+                deg, 
+                inst
+            ))
 
 timeouts = [any([transcripts[alg_ind][inst].is_timeout for alg_ind in range(number_of_algorithms)]) for inst in range(number_of_instances)]
 
 plt.rcParams["axes.titlesize"] = 8
-
-print("average:", sum([transcripts[0][inst].infos["snare updates"] for inst in range(number_of_instances)]) /number_of_instances)
-print("max:", max([transcripts[0][inst].infos["snare updates"] for inst in range(number_of_instances)]))
 
 axis_no_timeout = [[transcripts[alg_ind][inst].infos[param[alg_ind]] for inst in range(number_of_instances) if not(timeouts[inst])] for alg_ind in range(number_of_algorithms)]
 axis_timeout = [[transcripts[alg_ind][inst].infos[param[alg_ind]] for inst in range(number_of_instances) if timeouts[inst]] for alg_ind in range(number_of_algorithms)]
@@ -50,6 +70,19 @@ if(logscale[1]):
 
 plt.plot(axis_no_timeout[0], axis_no_timeout[1], "ro")
 plt.plot(axis_timeout[0], axis_timeout[1], "r^")
+
+if(display_diagonal):
+    axes=plt.gca()
+    xmin, xmax = axes.get_xlim()
+    res = 1000
+    delta= (xmax - xmin) / res
+    diag_points = [xmin + i*delta for i in range(res)]
+    plt.plot(diag_points, diag_points)
+
+
+for inst in range(number_of_instances):
+    if(transcripts[0][inst].infos["runtime"]>100):
+        print(inst)
 
 if display_axis_and_title:
     plt.title(algs[0] + " " + param[0] + " vs " + algs[1] + " " + param[1] + " on " + str(number_of_instances) + " instances of size" + " " + str(size))

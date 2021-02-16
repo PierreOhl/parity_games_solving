@@ -14,7 +14,14 @@ class progress_measure:
         self.optimal_edges = [set() for i in range(game.size)]
         self.validity_of_vert = [[None, None] for i in range(game.size)]
         self.need_updating = [True for i in range(game.size)]
-        
+        self.infos={"trajectory":[[] for i in range(game.size)]}
+    
+    def write_step_of_trajectory(self):
+        for i in range(self.game.size):
+            if(self.map[i].times_infinity):
+                self.infos["trajectory"][i].append(str(self.map[i].times_infinity)[:-1] + "infty")
+            else:
+                self.infos["trajectory"][i].append(str(self.map[i].value))
                 
     #updates weight, validity, and dest of edge of given index
     def update_info_of_edge(self, edge_ind):

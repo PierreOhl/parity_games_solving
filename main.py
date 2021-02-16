@@ -7,37 +7,46 @@ import trees
 import util
 import transcript
 
-size=3
-par=5
-edges=[(0, 2, 4), (1, 2, 3), (2, 1, 1), (2, 1, 3), (2, 1, 6)]
-g = games.parity_game(size, par, edges, [i<size//2 for i in range(size)])
-
-
-g = games.parity_game.generate_random_fast(50000, 2, 50000)
-g = games.parity_game_priorities_on_vertices.generate_random_bipartite(10000, 10000, 2)
-g.save_to_file("0005")
-
-g = games.parity_game.from_priority_on_vertices(g)
-
-
+g = games.parity_game.generate_random_fast_bipartite(100,2,4)
 g_en = games.energy_game.from_parity_game(g)
 
+
+i=0
+while(True):
+    i+=1
+    print("instance ", i)
+    g_en = games.energy_game.generate_random_fast_bipartite(100,2,5)
+    g_en = g_en.boost_weights_to_remove_null_cycles()
+
+
+    sneve = energy_executions.execution(g_en,10)
+    sneve.fast_asymmetric_snare_update(0)
+    sneve.printinfos()
+
+    snadam = energy_executions.execution(g_en,10)
+    snadam.fast_asymmetric_snare_update(1)
+    snadam.printinfos()
+
+    snalt = energy_executions.execution(g_en,10)
+    snalt.fast_alternating_snare_update()
+    snalt.printinfos()
+    
+    if(snalt.infos["snare updates"] > sneve.infos["snare updates"] + snadam.infos["snare updates"]):
+        print("ici")
+        break
+
+    if(snalt.solution != sneve.solution):
+        print("problem")
+        break
+        
+conj=0
 '''
-ziel = parity_executions.execution(g, 1000)
-ziel.zielonka_algorithm()
-ziel.printinfos()'''
+for i in range(g.size):
+    print("vertex", i)
+    print("Max iteration: ", sneve.infos["trajectory"][i])
+    print("Min iteration: ", snadam.infos["trajectory"][i])
+    print("Alternating: ", snalt.infos["trajectory"][i])
+    if(sneve.infos["trajectory"][i][0] == '0' and snalt.infos["trajectory"][i][1] < snadam.infos["trajectory"][i][0]):
+        conj=i
 
-snarfalt = energy_executions.execution(g_en, 1000)
-snarfalt.fast_alternating_snare_update()
-snarfalt.printinfos()
-
-
-
-snarfast = energy_executions.execution(g_en, 1000)
-snarfast.fast_asymmetric_snare_update(0)
-snarfast.printinfos()
-'''
-snarfadam = energy_executions.execution(g_en, 1000)
-snarfadam.fast_asymmetric_snare_update(1)
-snarfadam.printinfos()
-'''
+print(conj)'''

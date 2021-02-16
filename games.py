@@ -29,6 +29,9 @@ class energy_game:
             + str(self.edges)[1:-1] + '\n'
             + str(self.player)[1:-1]
         )
+        
+    def boost_weights_to_remove_null_cycles(self):
+        return(energy_game(self.size, self.size * self.max_absolute_value + 1, [(i,j,self.size*w+1) for (i,j,w) in self.edges], self.player))
     
     @classmethod
     def from_string(cls, s):
@@ -183,6 +186,28 @@ class parity_game_priorities_on_vertices:
                 edges.append((i, rand.randrange(size//2) + med * (i<med)))
         return(parity_game_priorities_on_vertices(size, size, edges, player, priorities))
     
+    @classmethod
+    def from_file(cls, filename):
+        f = open("instances/parity_vertices/" + filename)
+        s = f.read()
+        f.close()
+        return(parity_game_priorities_on_vertices.from_string(s))
+    
+    @classmethod
+    def from_string(cls, s):
+        lines=s.split("\n")
+        size = int(lines[0][7:-1])
+        priorities = [None for i in range(size)]
+        player = [None for i in range(size)]
+        edges = []
+        for i in range(size):
+            info = lines[i+1].split(" ")
+            priorities[i] = int(info[1])
+            player[i] = int(info[2])
+            str_successors = info[3][:-1].split(",")
+            for suc in str_successors:
+                edges.append((i, int(suc)))
+        return(parity_game_priorities_on_vertices(size, max(priorities), edges, player, priorities))
 
 class parity_game:
     ''' 

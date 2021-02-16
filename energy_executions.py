@@ -118,15 +118,13 @@ class execution:
         self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity != 0)]
         
     
-    def fast_asymmetric_snare_update(self, player):
+    def fast_asymmetric_snare_update(self, player, write_trajectory = False):
         
         start_time=time.time()
         phi = energy_progress_measures.progress_measure(self.game)
         
         self.infos["algorithm"] = "Fast asymmetric snare update for " + ["Eve", "Adam"][player]
         self.infos["snare updates"] = 0
-        self.infos["time of updating info"]= 0
-        
         phi.fast_globally_update_info()
         
         while(any([not(phi.validity_of_vert[i][1-player]) and phi.map[i].times_infinity * (-1)**player < 1 for i in range(self.game.size)])):
@@ -137,12 +135,17 @@ class execution:
             
             phi.fast_snare_lift(player)
             self.infos["snare updates"] += 1
-            
-            now = time.time()
+
             phi.fast_globally_update_validity()
-            self.infos["time of updating info"] += time.time() - now
+            
+            if(write_trajectory):
+                phi.write_step_of_trajectory()
         
         self.infos["runtime"] = time.time() - start_time
+        
+        if(write_trajectory):
+            self.infos["trajectory"] = phi.infos["trajectory"]
+        
         self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity != 0)]
         
     
@@ -175,7 +178,7 @@ class execution:
         self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity == 1)]
         
     
-    def fast_alternating_snare_update(self):
+    def fast_alternating_snare_update(self, write_trajectory = False):
         
         start_time=time.time()
         phi = energy_progress_measures.progress_measure(self.game)
@@ -188,6 +191,7 @@ class execution:
         player=0
         while(any([phi.map[i].times_infinity == 0 for i in range(self.game.size)])):
             
+            
             if(time.time() > start_time + self.timeout):
                 self.is_timeout = True
                 break
@@ -196,7 +200,13 @@ class execution:
             self.infos["snare updates"] += 1
             player = 1 - player
             phi.fast_globally_update_validity()
+            
+            if(write_trajectory):
+                phi.write_step_of_trajectory()
         
         
         self.infos["runtime"] = time.time() - start_time
+        if(write_trajectory):
+            self.infos["trajectory"] = phi.infos["trajectory"]
+        
         self.solution = [i for i in range(self.game.size) if (phi.map[i].times_infinity == 1)]
