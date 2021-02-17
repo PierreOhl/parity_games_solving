@@ -150,7 +150,7 @@ class execution:
     def zielonka_solve(self, priority, vert_set, time_limit):
         
         self.infos["recursive calls"] += 1
-        if(priority == self.game.max_priority):
+        if(priority == self.game.max_param):
             self.infos["iterations"] += 1
         
         if(time.time() > time_limit):
@@ -215,7 +215,7 @@ class execution:
         for player in [0,1]:
             player_attr_to_opponent_sink[player] = self.game.attr_in_subgame(
                 {i for i in range(self.game.size)},
-                self.game.max_priority,
+                self.game.max_param,
                 {i for i in sinks if self.game.player[i] == 1 - player},
                 player
             )
@@ -230,7 +230,7 @@ class execution:
         
         #call to main recursive procedure
         solution_set = self.zielonka_solve( 
-            self.game.max_priority, 
+            self.game.max_param, 
             remaining_vert,
             start_time + self.timeout
         )

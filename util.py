@@ -11,56 +11,237 @@ def truncate_to_one(x):
         return(x)
     else:
         return(x//abs(x))
+
+class sparse_tuple:
+    '''
+    defines alternating-lexicographically ordered sparse tuples
+    value is a list of pairs (p,k) where p nonnegative and k nonzero.
+    infty is 0 for finite, or +-1 for +- infty
+    TODO: change to better data struct for actual log insertion
+    '''
+    def __init__(self, infty=0, value=[]):
+        self.value = value
+        self.infty = infty
+    
+    
+    def __eq__(self, other):
+        if(self.infty or other.infty):
+            return(self.infty == other.infty)
+        else:
+            return(self.value == other.value)
+
+    
+    #performs addition in complexity O(l1 + l2)
+    def __add__(self, other):
+        if(self.infty):
+            return(sparse_tuple(infty=self.infty))
+        if(other.infty):
+            return(sparse_tuple(infty=other.infty))
+        inds = 0
+        indo = 0
+        value=[]
+        while(inds < len(self.value) and indo < len(other.value)):
+            (ps,ks)=self.value[inds]
+            (po,ko)=other.value[indo]
+            if(ps == po):
+                if(ks + ko != 0):
+                    value.append((ps, ks + ko))
+                inds += 1
+                indo += 1
+            elif(ps > po):
+                value.append((ps, ks))
+                inds += 1
+            else:
+                value.append((po, ko))
+                indo += 1
+        if(inds == len(self.value)):
+            value += other.value[indo:]
+        else:
+            value += self.value[inds:]
+        return(sparse_tuple(value = value))
+    
+    
+    #performs substraction in O(l1 + l2)
+    def __sub__(self, other):
+        if(self.infty):
+            return(sparse_tuple(infty=self.infty))
+        if(other.infty):
+            return(sparse_tuple(infty=-other.infty))
+        inds = 0
+        indo = 0
+        value=[]
+        while(inds < len(self.value) and indo < len(other.value)):
+            (ps,ks)=self.value[inds]
+            (po,ko)=other.value[indo]
+            if(ps == po):
+                if(ks - ko != 0):
+                    value.append((ps, ks - ko))
+                inds += 1
+                indo += 1
+            elif(ps > po):
+                value.append((ps, ks))
+                inds += 1
+            else:
+                value.append((po, -ko))
+                indo += 1
+        if(inds == len(self.value)):
+            value += [(p,-k) for (p,k) in other.value[indo:]]
+        else:
+            value += self.value[inds:]
+        return(sparse_tuple(value = value))
+        
+    
+    #compares in O(l1 + l2)
+    def __lt__(self, other):
+        if(type(other) is int): #comparison with integer 0
+            return(self.__lt__(sparse_tuple()))
+                
+        if(self.infty or other.infty):
+            return(self.infty <= other.infty) #by convention, infty < infty (check)
+        
+        ind=0
+        while(ind < len(self.value) and ind < len(other.value)):
+            (ps,ks)=self.value[ind]
+            (po,ko)=other.value[ind]
+            if(ps==po and ks==ko):
+                ind+=1
+            else:
+                if(ps==po):
+                    return(((ks <= ko) + ps) % 2) #invert order for odd priorities
+                elif(ps > po):
+                    return(((ks <= 0) + ps) % 2)
+                else:
+                    return(((ko >= 0) + po) % 2)
+        if(len(self.value) == len(other.value)): #case of equality
+            return(False)
+        elif(len(self.value) < len(other.value)):
+            (po,ko)=other.value[ind]
+            return(((ko >= 0) + po) % 2)
+        else:
+            (ps,ks)=self.value[ind]
+            return(((ks <= 0) + ps) % 2)
+
+
+    #compares in O(l1 + l2)
+    def __le__(self, other):
+        if(type(other) is int): #comparison with integer 0
+            return(self.__le__(sparse_tuple()))
+        
+        if(self.infty or other.infty):
+            return(self.infty <= other.infty) #by convention, infty < infty (check)
+        
+        ind=0
+        while(ind < len(self.value) and ind < len(other.value)):
+            (ps,ks)=self.value[ind]
+            (po,ko)=other.value[ind]
+            if(ps==po and ks==ko):
+                ind+=1
+            else:
+                if(ps==po):
+                    return(((ks <= ko) + ps) % 2) #invert order for odd priorities
+                elif(ps > po):
+                    return(((ks <= 0) + ps) % 2)
+                else:
+                    return(((ko >= 0) + po) % 2)
+                
+        if(len(self.value) == len(other.value)): #case of equality
+            return(True)
+        elif(len(self.value) < len(other.value)):
+            (po,ko)=other.value[ind]
+            return(((ko >= 0) + po) % 2)
+        else:
+            (ps,ks)=self.value[ind]
+            return(((ks <= 0) + ps) % 2)
+    
+    def __gt__(self, other):
+        if(type(other) is int): #comparison with integer 0
+            zero = sparse_tuple()
+            return(zero.__lt__(self))
+        
+        return(other.__lt__(self))
+    
+    def __ge__(self, other):
+        if(type(other) is int): #comparison with integer 0
+            zero = sparse_tuple()
+            return(zero.__le__(self))
+        
+        return(other.__le__(self))
+
+
+    #performs addition in place in O(log(l))
+    def add_priority_in_place(self, p):
+        if(self.infty):
+            return()
+        lo=0
+        hi=len(self.value)
+        while(hi > lo):
+            mid = (hi + lo)//2
+            (ps,ks) = self.value[mid]
+            if(ps == p):
+                if(ks == -1):
+                    self.value.pop(mid)
+                else:
+                    self.value[mid] = (ps, ks +1)
+                return()
+            elif(ps > p):
+                lo = mid + 1
+            else:
+                hi = mid
+        self.value.insert(hi, (p, 1)) #this is not real log(n), could optimize with better data struct
+        
+                
+    
+                    
 class possibly_infinite_integer:
     '''
     defines possibly infinite integers by two fields:
         - value is the value if it is finite
-        - times_infinity is an integer in -1,0,1, and
+        - infty is an integer in -1,0,1, and
         is set to -1 for - infty and 1 for + infty, in
         which case the value is discarded
     
     '''
-    def __init__(self, value, infinity=0): #initialises an integer
+    def __init__(self, value, infty=0): #initialises an integer
         self.value = value
-        self.times_infinity = infinity
+        self.infty = infty
     
     def __eq__(self, b):
         if(type(b) is int):
-            return(self.times_infinity==0 and self.value == b)
-        if(self.times_infinity or b.times_infinity):
-            return(self.times_infinity == b.times_infinity)
+            return(self.infty==0 and self.value == b)
+        if(self.infty or b.infty):
+            return(self.infty == b.infty)
         else:
             return(self.value == b.value)
     
     def __add__(self, b):
         if(type(b) is int):
-            if(self.times_infinity):
-                return(possibly_infinite_integer(0,self.times_infinity))
+            if(self.infty):
+                return(possibly_infinite_integer(0,self.infty))
             return(possibly_infinite_integer(self.value + b))
-        infval = truncate_to_one(b.times_infinity + self.times_infinity)
+        infval = truncate_to_one(b.infty + self.infty)
         if(infval):
             return(possibly_infinite_integer(0, infval))
         return(possibly_infinite_integer(self.value + b.value))
     
     def __sub__(self, b):
         if(type(b) is int):
-            if(self.times_infinity):
-                return(possibly_infinite_integer(0, self.times_infinity))
+            if(self.infty):
+                return(possibly_infinite_integer(0, self.infty))
             return(possibly_infinite_integer(self.value - b))
-        if(self.times_infinity):
-            infval = self.times_infinity
+        if(self.infty):
+            infval = self.infty
         else:
-            infval = - b.times_infinity
+            infval = - b.infty
         if(infval):
             return(possibly_infinite_integer(0, infval))
         return(possibly_infinite_integer(self.value - b.value))
     
     def __mul__(self, b):
         if(type(b) is int):
-            if(self.times_infinity):
-                return(possibly_infinite_integer(0, truncate_to_one(b*self.times_infinity))) #infinity absorbs 0 (should not be reached either way)
+            if(self.infty):
+                return(possibly_infinite_integer(0, truncate_to_one(b*self.infty))) #infinity absorbs 0 (should not be reached either way)
             return(possibly_infinite_integer(self.value * b, 0))
-        infval = truncate_to_one(self.value * b.times_infinity)
+        infval = truncate_to_one(self.value * b.infty)
         if(infval):
             return(possibly_infinite_integer(0,infval))
         return(possibly_infinite_integer(self.value * b.value))
@@ -68,23 +249,23 @@ class possibly_infinite_integer:
     
     def __lt__(self, b):
         if(type(b) is int):
-            return(self.times_infinity == -1 or self.value < b)
-        return(self.times_infinity < b.times_infinity or (self.times_infinity == 0 and b.times_infinity == 0 and self.value < b.value))
+            return(self.infty == -1 or self.value < b)
+        return(self.infty < b.infty or (self.infty == 0 and b.infty == 0 and self.value < b.value))
     
     def __gt__(self, b):
         if(type(b) is int):
-            return(self.times_infinity == 1 or self.value > b)
-        return(self.times_infinity > b.times_infinity or (self.times_infinity == 0 and b.times_infinity == 0 and self.value > b.value))
+            return(self.infty == 1 or self.value > b)
+        return(self.infty > b.infty or (self.infty == 0 and b.infty == 0 and self.value > b.value))
     
     def __le__(self, b):
         if(type(b) is int):
-            return(self.times_infinity == -1 or (self.times_infinity == 0 and self.value <= b))
-        return(self.times_infinity == -1 or b.times_infinity == 1 or (self.times_infinity == 0 and b.times_infinity == 0 and self.value <= b.value))
+            return(self.infty == -1 or (self.infty == 0 and self.value <= b))
+        return(self.infty == -1 or b.infty == 1 or (self.infty == 0 and b.infty == 0 and self.value <= b.value))
     
     def __ge__(self, b):
         if(type(b) is int):
-            return(self.times_infinity == 1 or (self.times_infinity == 0 and self.value >= b))
-        return(self.times_infinity == 1 or b.times_infinity == -1 or (self.times_infinity == 0 and b.times_infinity == 0 and self.value >= b.value))
+            return(self.infty == 1 or (self.infty == 0 and self.value >= b))
+        return(self.infty == 1 or b.infty == -1 or (self.infty == 0 and b.infty == 0 and self.value >= b.value))
     
 class partition_plus_node_data:
     '''

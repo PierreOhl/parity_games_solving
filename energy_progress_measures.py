@@ -6,7 +6,10 @@ class progress_measure:
     
     def __init__(self, game):
         self.game = game
-        self.map = [util.possibly_infinite_integer(0) for i in range(game.size)]
+        if(game.typ == "energy"):
+            self.map = [util.possibly_infinite_integer(0) for i in range(game.size)]
+        else:
+            self.map = [util.sparse_tuple() for i in range(game.size)]
         self.dest_of_vert = [None for i in range(game.size)]
         self.dest_of_edge = [None for e in range(game.number_edges)]
         self.validity_of_edge = [None for e in range(game.number_edges)]
@@ -14,16 +17,18 @@ class progress_measure:
         self.optimal_edges = [set() for i in range(game.size)]
         self.validity_of_vert = [[None, None] for i in range(game.size)]
         self.need_updating = [True for i in range(game.size)]
-        self.infos={"trajectory":[[] for i in range(game.size)]}
+        self.infos={"trajectory":[[] for i in range(game.size)], "chrono":0}
+    
     
     def write_step_of_trajectory(self):
         for i in range(self.game.size):
-            if(self.map[i].times_infinity):
-                self.infos["trajectory"][i].append(str(self.map[i].times_infinity)[:-1] + "infty")
+            if(self.map[i].infty):
+                self.infos["trajectory"][i].append(str(self.map[i].infty)[:-1] + "infty")
             else:
                 self.infos["trajectory"][i].append(str(self.map[i].value))
                 
-    #updates weight, validity, and dest of edge of given index
+    
+    #updates weight, validity, and dest of edge of given index 
     def update_info_of_edge(self, edge_ind):
         (i,j,w) = self.game.edges[edge_ind]
         self.dest_of_edge[edge_ind] = self.map[j] + w #could optimize a bit by doing this only when necessary
@@ -31,13 +36,19 @@ class progress_measure:
         self.validity_of_edge[edge_ind] = (self.modified_weight[edge_ind] >= 0, self.modified_weight[edge_ind] <= 0)
 
 
-    #updates weight, validity, and dest of edge of given index
+    #updates weight of edge of given index
     def fast_update_info_of_edge(self, edge_ind):
         (i,j,w) = self.game.edges[edge_ind]
-        self.modified_weight[edge_ind] = self.map[j] - self.map[i] + w
-        
+        if(self.game.typ == "energy"):
+            self.modified_weight[edge_ind] = self.map[j] - self.map[i] + w
+        else:
+            self.modified_weight[edge_ind] = self.map[j] - self.map[i]
+            self.modified_weight[edge_ind].add_priority_in_place(w)
+    
+    
     def update_validity_of_edge(self, edge_ind):
         self.validity_of_edge[edge_ind] = (self.modified_weight[edge_ind] >= 0, self.modified_weight[edge_ind] <= 0)
+
 
     def update_validity_of_vertex(self, i):
         #update vertex validity
@@ -85,8 +96,8 @@ class progress_measure:
     #the third argument indicates if the update is stricly growing or stricly decreasing (optimization)
     def update_map(self, i, x, growing):
         self.map[i] = x
-        if(self.map[i].times_infinity): #could remove ?
-            self.dest_of_vert[i] = util.possibly_infinite_integer(0, self.map[i].times_infinity)
+        if(self.map[i].infty): #could remove ?
+            self.dest_of_vert[i] = util.possibly_infinite_integer(0, self.map[i].infty)
         for (_,edge_ind) in self.game.succ[i]: #update info of outgoing edges
             self.update_info_of_edge(edge_ind)
         for (pre, edge_ind) in self.game.pred[i]: #update weight of ingoing edges and dest of predecessor
@@ -124,7 +135,10 @@ class progress_measure:
                 
     
     def list_invalid(self, player):
-        return([i for i in range(self.game.size) if self.map[i].times_infinity == (-1)**(player +1) or self.dest_of_vert[i] * (-1)**player < self.map[i] * (-1)**player])
+        if(player):
+            return([i for i in range(self.game.size) if self.map[i].infty == 1 or self.dest_of_vert[i] > self.map[i]])
+        else:
+            return([i for i in range(self.game.size) if self.map[i].infty == -1 or self.dest_of_vert[i] < self.map[i]])
     
     
     def player_vert_to_be_fixed(self, fixed, player):  #auxiliary function for snare_lift
@@ -145,7 +159,8 @@ class progress_measure:
                     return(i)
             i+=1
         
-    def threshold_lift(self, i, growing):
+    
+    def threshold_lift(self, i, growing): #NEEDS UPDATING FOR BCDGR
         if(self.dest_of_vert[i] > self.game.size * self.game.max_absolute_value):
             self.dest_of_vert[i] = util.possibly_infinite_integer(0,1) #set dest to +infinity
         elif(self.dest_of_vert[i] < - self.game.size * self.game.max_absolute_value):
@@ -153,7 +168,7 @@ class progress_measure:
         self.update_map(i, self.dest_of_vert[i], growing)
     
     
-    def snare_lift(self, player):
+    def snare_lift(self, player):   #DEPRECATED
         fixed = self.list_invalid(player)
         spent = 0
         equiv_updates = 0
@@ -195,7 +210,7 @@ class progress_measure:
                     if(i not in fixed):
                         self.update_map(i, self.map[i] + delta, 1-player)
             
-            if(delta.times_infinity):
+            if(delta.infty):
                 break
             
             fixed += to_be_fixed
@@ -218,10 +233,17 @@ class progress_measure:
         max_to_be_treated = []
         #initially treat player vertices which are attracted to fixed
         for i in [i for i in range(self.game.size) if self.game.player[i] == player and number_edges_towards_not_fixed[i] == 0 and i not in fixed]:
-            if(player):
-                self.fast_update_map(i, min([self.map[s] + self.game.edges[edge_ind][2] for (s,edge_ind) in self.game.succ[i] if self.validity_of_edge[edge_ind][player]]))
+           if(self.game.typ=="energy"): #FACTOR THIS BETTER
+                if(player):
+                    dest = min([self.map[s] + self.game.edges[edge_ind][2] for (s,edge_ind) in self.game.succ[i] if self.validity_of_edge[edge_ind][player]])
+                else:
+                    dest = max([self.map[s] + self.game.edges[edge_ind][2] for (s,edge_ind) in self.game.succ[i] if self.validity_of_edge[edge_ind][player]])
             else:
-                self.fast_update_map(i, max([self.map[s] + self.game.edges[edge_ind][2] for (s,edge_ind) in self.game.succ[i] if self.validity_of_edge[edge_ind][player]]))
+                if(player):
+                    dest = min([self.map[s] + util.sparse_tuple(value=[(self.game.edges[edge_ind][2],1)]) for (s,edge_ind) in self.game.succ[i] if self.validity_of_edge[edge_ind][player]])
+                else:
+                    dest = max([self.map[s] + util.sparse_tuple(value=[(self.game.edges[edge_ind][2],1)]) for (s,edge_ind) in self.game.succ[i] if self.validity_of_edge[edge_ind][player]])
+            self.fast_update_map(i, dest)
             
             fixed.add(i)
             self.update_min_predecessors(i, fixed, min_edge_towards_fixed, order, player)
@@ -234,10 +256,17 @@ class progress_measure:
                 j = max_to_be_treated.pop()
                 number_edges_towards_not_fixed[j] -= 1
                 if(number_edges_towards_not_fixed[j] == 0):
-                    if(player):
-                        self.fast_update_map(j, min([self.map[s] + self.game.edges[edge_ind][2] for (s,edge_ind) in self.game.succ[j] if self.validity_of_edge[edge_ind][player]]))
+                    if(self.game.typ=="energy"):
+                        if(player):
+                            dest = min([self.map[s] + self.game.edges[edge_ind][2] for (s,edge_ind) in self.game.succ[j] if self.validity_of_edge[edge_ind][player]])
+                        else:
+                            dest = max([self.map[s] + self.game.edges[edge_ind][2] for (s,edge_ind) in self.game.succ[j] if self.validity_of_edge[edge_ind][player]])
                     else:
-                        self.fast_update_map(j, max([self.map[s] + self.game.edges[edge_ind][2] for (s,edge_ind) in self.game.succ[j] if self.validity_of_edge[edge_ind][player]]))
+                        if(player):
+                            dest = min([self.map[s] + util.sparse_tuple(value=[(self.game.edges[edge_ind][2],1)]) for (s,edge_ind) in self.game.succ[j] if self.validity_of_edge[edge_ind][player]])
+                        else:
+                            dest = max([self.map[s] + util.sparse_tuple(value=[(self.game.edges[edge_ind][2],1)]) for (s,edge_ind) in self.game.succ[j] if self.validity_of_edge[edge_ind][player]])
+                    self.fast_update_map(j, dest)
                     fixed.add(j)
                     self.update_min_predecessors(j, fixed, min_edge_towards_fixed, order, player)
                     max_to_be_treated += [pre for (pre,edge_ind) in self.game.pred[j] if pre not in fixed and self.game.player[pre] == player and self.validity_of_edge[edge_ind][player]]
@@ -250,19 +279,20 @@ class progress_measure:
                 edge_ind0 = min_edge_towards_fixed[i]
                 self.fast_update_map(i, self.map[i] + self.modified_weight[edge_ind0])
                 fixed.add(i)
-                self.update_min_predecessors(i, fixed, min_edge_towards_fixed, order,player)
+                self.update_min_predecessors(i, fixed, min_edge_towards_fixed, order, player)
                 max_to_be_treated=[pre for (pre,edge_ind) in self.game.pred[i] if pre not in fixed and self.game.player[pre] == player and self.validity_of_edge[edge_ind][player]]
                    
         for i in range(self.game.size):
             if(i not in fixed):
-                self.fast_update_map(i, util.possibly_infinite_integer(0,(-1)**player)) #infinity if player = 0
-            
+                if(self.game.typ=="energy"):
+                    self.fast_update_map(i, util.possibly_infinite_integer(0,(-1)**player)) #infinity if player = 0
+                else:
+                    self.fast_update_map(i, util.sparse_tuple(infty=(-1)**player)) #infinity if player = 0
                 
     def update_min_predecessors(self, i,fixed,min_edge_towards_fixed,order, player):
         for (pre, edge_ind) in self.game.pred[i]:
             if(pre not in fixed and self.game.player[pre] != player):
-                #self.modified_weight[edge_ind] = self.map[i] - self.map[pre] + self.game.edges[edge_ind][2] #update modified weight
-                if(min_edge_towards_fixed[pre] == None or (player == 0 and self.modified_weight[edge_ind] < self.modified_weight[min_edge_towards_fixed[pre]]) or (player == 1 and self.modified_weight[edge_ind] > self.modified_weight[min_edge_towards_fixed[pre]])): #symmetricalize
+                if(min_edge_towards_fixed[pre] == None or (player == 0 and self.modified_weight[edge_ind] < self.modified_weight[min_edge_towards_fixed[pre]]) or (player == 1 and self.modified_weight[edge_ind] > self.modified_weight[min_edge_towards_fixed[pre]])):
                     min_edge_towards_fixed[pre] = edge_ind
                     self.change_position(order,pre,min_edge_towards_fixed)
                     
