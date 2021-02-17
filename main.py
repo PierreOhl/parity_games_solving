@@ -7,24 +7,21 @@ import trees
 import util
 import transcript
 
-g = games.game.generate_random_fast_parity(1000,2,1000)
-g_en = g.to_energy()
+for i in range(10):
 
-#g = games.game(3,4,[(0, 2, 3), (0, 0, 4), (1, 2, 1), (1, 0, 2), (2, 0, 4), (2, 1, 2)], [1,0,0],"parity")
+    g = games.game.generate_random_fast_parity(10000,2,10000)
+    g_en = g.to_energy()
 
-#print(g.to_string())
+    #g = games.game(3,4,[(0, 2, 3), (0, 0, 4), (1, 2, 1), (1, 0, 2), (2, 0, 4), (2, 1, 2)], [1,0,0],"parity")
 
-exec_ziel = parity_executions.execution(g, 10)
-#exec_ziel.zielonka_algorithm()
-exec_ziel.printinfos()
-#print(exec_ziel.solution)
+    #print(g.to_string())
 
-exec_snare = energy_executions.execution(g, 100000)
-exec_snare.fast_alternating_snare_update()
-exec_snare.printinfos()
-#print(exec_snare.solution)
 
-exec_snareb = energy_executions.execution(g_en, 100000)
-exec_snareb.fast_alternating_snare_update()
-exec_snareb.printinfos()
-#print(exec_snareb.solution)
+    exec_snare = energy_executions.execution(g_en, 100000)
+    exec_snare.snare_update(alternating=False)
+    exec_snare.printinfos()
+
+    exec_snareb = energy_executions.execution(g_en, 100000)
+    exec_snareb.snare_update()
+    exec_snareb.printinfos()
+    #print(exec_snareb.solution)
