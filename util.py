@@ -23,6 +23,8 @@ class sparse_tuple:
         self.value = value
         self.infty = infty
     
+    def set_to_infty(self, infty):
+        self.infty=infty
     
     def __eq__(self, other):
         if(self.infty or other.infty):
@@ -205,6 +207,9 @@ class possibly_infinite_integer:
         self.value = value
         self.infty = infty
     
+    def set_to_infty(self, infty):
+        self.infty = infty
+    
     def __eq__(self, b):
         if(type(b) is int):
             return(self.infty==0 and self.value == b)
@@ -267,6 +272,18 @@ class possibly_infinite_integer:
             return(self.infty == 1 or (self.infty == 0 and self.value >= b))
         return(self.infty == 1 or b.infty == -1 or (self.infty == 0 and b.infty == 0 and self.value >= b.value))
     
+    def min_of_list(l, player):
+        '''
+        performs min of list if player =0, max otherwise
+        '''
+        if(l):
+            if(player == 0):
+                return(min(l)) #could try to optimize (not sure if python intelligent when min of list of integers)
+            else:
+                return(max(l))
+        else:
+            return(possibly_infinite_integer(0, infty=(-1)**player))
+        
 class partition_plus_node_data:
     '''
     describes a partition of [0,1, ..., number_of_elements -1] together

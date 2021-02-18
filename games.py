@@ -16,11 +16,28 @@ class game:
             self.pred[edges[edge_ind][1]].append((edges[edge_ind][0], edge_ind))
             self.succ[edges[edge_ind][0]].append((edges[edge_ind][1], edge_ind))
     
+    
     def to_energy(self):
         if(self.typ == "energy"):
-            return(game)
+            return(self)
         edges = [(i,j,((-1)* self.size) ** p) for (i,j,p) in self.edges]
         max_param = self.size ** self.max_param
+        return(game(self.size, max_param, edges, self.player,"energy"))
+    
+    
+    def to_energy_small_weights(self):
+        if(self.typ == "energy"):
+            return(self)
+        priority_occurence=[0 for i in range(self.max_param +1)]
+        for edge_ind in range(self.number_edges):
+            priority_occurence[self.edges[edge_ind][2]] += 1
+        coef=[1]
+        m=1
+        for i in range(self.max_param):
+            m = (-1) * m * (priority_occurence[i] + 1)
+            coef.append(m)
+        edges = [(i,j,coef[p]) for (i,j,p) in self.edges]
+        max_param = coef[self.max_param]
         return(game(self.size, max_param, edges, self.player,"energy"))
     
     def to_string(self):
@@ -33,7 +50,6 @@ class game:
         
     def boost_weights_to_remove_null_cycles(self):
         return(game(self.size, self.size * self.max_param + 1, [(i,j,self.size*w+1) for (i,j,w) in self.edges], self.player, self.typ))
-    
     
     @classmethod
     def from_string(cls, s):

@@ -90,16 +90,18 @@ class execution:
         
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if (phi.map[i].infty != 0)]
-        
-        
+    
     def snare_update(self, player=0, write_trajectory = False, alternating=True):
         
         start_time=time.time()
         phi = energy_progress_measures.progress_measure(self.game)
         
-        self.infos["algorithm"] = ["Asymmetric", "Alternating"][alternating] + " snare update for " + ["Eve", "Adam"][player]
+        if(alternating):
+            self.infos["algorithm"] = "Asymmetric snare update for " + ["Eve", "Adam"][player]
+        else:
+            self.infos["algorithm"] = "Alternating snare update"
         self.infos["snare updates"] = 0
-        phi.globally_update_info()
+            
         pl=player
         
         while(
