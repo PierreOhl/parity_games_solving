@@ -68,14 +68,14 @@ class game:
     
     @classmethod
     def from_file(cls, filename):
-        file = open("instances/"+ self.typ + "/" + filename, 'r')
+        file = open("instances/" + filename, 'r')
         s = file.read()
         file.close()
         return(game.from_string(s))
     
     
     def save_to_file(self, filename):
-        file = open("instances/" + self.typ + "/" + filename, 'w+')
+        file = open("instances/" + filename, 'w+')
         file.write(self.to_string())
         file.close()
         

@@ -26,6 +26,9 @@ class sparse_tuple:
     def set_to_infty(self, infty):
         self.infty=infty
     
+    def is_zero(self):
+        return(not(self.infty) and not(self.value))
+    
     def __eq__(self, other):
         if(self.infty or other.infty):
             return(self.infty == other.infty)
@@ -190,10 +193,174 @@ class sparse_tuple:
             else:
                 hi = mid
         self.value.insert(hi, (p, 1)) #this is not real log(n), could optimize with better data struct
-        
-                
     
-                    
+    
+    
+    def min_of_tuple_list_with_additionnal_value(list, player):
+        '''
+        given a list of tuples (st,p) where st is a sparse tuple,
+        computes the min value of st + p
+        and returns corresponding index
+        '''
+        
+        trivial_version = False
+        if(trivial_version):
+            list_with_added = [st + sparse_tuple(value=[(p,1)]) for (st,p) in list]
+            if(player==0):
+                return(min(list_with_added))
+            else:
+                return(max(list_with_added))
+        
+        
+        if(any([st.infty == (-1)**(player +1) for (st,p) in list])):
+            return(sparse_tuple(infty=(-1)**(player +1)))
+        if(all([st.infty == (-1)**(player) for (st, p) in list])):
+            return(sparse_tuple(infty=(-1)**(player)))
+        
+        
+        alive=[(l,0,False,None) for l,(st,p) in enumerate(list) if st.infty != (-1)**player]
+        rep=[]
+        rep_in_list=False
+        #assume for now player = 0 --> compute a min
+        while(alive):
+            for (i,(l,ind,used,_)) in enumerate(alive):
+                #compute next contribution (there is one)
+                (st,p) = list[l]
+                if(ind == len(st.value)):
+                    alive[i] = (l, ind, True, (p,1))
+                else:
+                    (ps,ks) = st.value[ind]
+                    if(used or ps > p):
+                        alive[i] = (l, ind+1, used, (ps,ks))                        
+                    elif(p == ps):
+                        alive[i] = (l, ind+1, True, (ps,ks+1))
+                    else:
+                        alive[i] = (l, ind, True, (p,1))
+                        
+            #if rep is a candidate min, kill those that have positive contribution
+            if(rep_in_list):
+                i = 0
+                new_alive = []
+                while(i < len(alive)):
+                    if(((alive[i][3][0] < 0) + alive[i][3][0] + player) % 2):
+                        new_alive.append(alive[i])
+                    i += 1
+                rep_in_list = False
+                alive = new_alive
+            if(not(alive)):
+                break
+            
+            #kill non minimal
+            new_alive = []
+            mi = alive[0][3] #min if player = 0
+            (l,ind,used,cand) = alive[0]
+            (st,p) = list[l]
+            if(ind < len(st.value) or not(used)):
+                new_alive.append(alive[0])
+            else:
+                rep_in_list = True
+            i=1
+            while(i<len(alive)):
+                (l,ind,used,cand) = alive[i]
+                add=False
+                if((player == 0 and sparse_tuple.pair_smaller(cand, mi)) or
+                   (player == 1 and sparse_tuple.pair_smaller(mi, cand))):
+                    mi = cand
+                    new_alive = []
+                    rep_in_list = False
+                    add=True
+                elif(cand == mi):
+                    add=True
+                if(add):
+                    (st,p) = list[l]
+                    if(ind < len(st.value) or not(used)):
+                        new_alive.append(alive[i])
+                    else:
+                        rep_in_list = True
+                i+=1
+            rep.append(mi)
+            alive = new_alive
+        
+        return(sparse_tuple(value=rep))
+            
+                
+
+        
+    
+    def compute_edge_validity(pos, neg, p):
+        '''
+        given two sparse tuples pos and neg, a priority p, and a player
+        returns True iff pos - neg + p >= 0 if player = 0, and <= 0 o/w
+        assumes neg to be finite TOFIX
+        '''
+        ver1 = False
+        if ver1:
+            res = pos - neg + sparse_tuple(value=[(p,1)])
+            if(res.is_zero()):
+                return((1,1))
+            elif(res > 0):
+                return((1,0))
+            else:
+                return((0,1))
+            
+            
+        if(pos.infty):
+            if(pos.infty == 1):
+                return((1,0))
+            else:
+                return((0,1))
+        
+        
+        indpos=0
+        indneg=0
+        used=False
+        contin = True
+        
+        while(contin):
+            if(indpos < len(pos.value)):
+                (pp,pk) = pos.value[indpos]
+            else:
+                (pp,pk) = (0,0)
+            if(indneg < len(neg.value)):
+                (np,nk) = neg.value[indneg]
+            else:
+                (np,nk) = (0,0)
+            
+            if(np == 0 and nk == 0 and used):
+                contin = False
+        
+            if(not(used)):
+                ma = max(pp, np, p)
+            else:
+                ma = max(pp, np)
+            s=0
+            
+            if(pp == ma):
+                s += pk
+                indpos += 1
+            if(np == ma):
+                s -= nk
+                indneg += 1
+            if(not(used) and p == ma):
+                s += 1
+                used = True
+            if(s != 0):
+                if(((s >= 0) + ma) %2):
+                    return((1,0))
+                else:
+                    return((0,1))
+        return((1,1))
+    
+    def pair_smaller(p1,p2):
+        if(p1[0] == p2[0]):
+            if(p1[1] == p2[1]):
+                return(False)
+            return(((p1[1] < p2[1]) + p1[0]) % 2)
+        elif(p1[0] > p2[0]):
+            return(((p1[1] < 0) + p1[0]) % 2)
+        else:
+            return(((p2[1] > 0) + p2[0]) % 2)
+        
 class possibly_infinite_integer:
     '''
     defines possibly infinite integers by two fields:
@@ -278,12 +445,13 @@ class possibly_infinite_integer:
         '''
         if(l):
             if(player == 0):
-                return(min(l)) #could try to optimize (not sure if python intelligent when min of list of integers)
+                return(min(l))
             else:
                 return(max(l))
         else:
             return(possibly_infinite_integer(0, infty=(-1)**player))
         
+    
 class partition_plus_node_data:
     '''
     describes a partition of [0,1, ..., number_of_elements -1] together
