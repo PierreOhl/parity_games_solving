@@ -7,8 +7,10 @@ import trees
 import util
 import transcript
 
-g = games.game.generate_random_fast_parity(10,2,5)
-g_en = games.game.to_energy_small_weights(g)
+n=15
+maxw = 150
+for i in range(100):
+    g = games.game.generate_random_fast_energy(n,2,maxw)
 
-exec = energy_executions.execution(g_en,10)
-exec.snare_update(draw_transcript=True, transcript_filename="transcripts/test1")
+    exec = energy_executions.execution(g,10)
+    exec.snare_update(draw_transcript=True, transcript_filename="transcripts/random15ene_sym/inst{:02d}_iter".format(i), alternating=True)

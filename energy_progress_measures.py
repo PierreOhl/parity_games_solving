@@ -61,9 +61,9 @@ class progress_measure:
         for pl in (0,1):
             validity_of_successors = [self.validity_of_edge[edge_ind][pl] for _,edge_ind in self.game.succ[i]]
             if(self.game.player[i] == pl):
-                self.validity_of_vert[i][pl] = any(validity_of_successors)
+                self.validity_of_vert[i][pl] = int(any(validity_of_successors))
             else:
-                self.validity_of_vert[i][pl] = all(validity_of_successors)
+                self.validity_of_vert[i][pl] = int(all(validity_of_successors))
                     
 
     def update_dest_of_edge(self, edge_ind):

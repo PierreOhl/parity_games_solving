@@ -150,17 +150,28 @@ class execution:
             
             for t in range(self.infos["snare updates"]+1):
                 phi=transcript[t]
-                
                         
                 edges_with_attributes = [(i,j,
-                                        {"label" : w,
-                                        "color" : util.color_of_validity(phi.validity_of_edge[edge_ind],"edge")})
+                                        {"label" : [w + phi.map[j].value - phi.map[i].value, str((phi.map[j]-phi.map[i]).infty)[:-1] + "∞"][phi.map[j].infty or phi.map[i].infty],
+                                        "color" : {
+                                            "1" : "red",
+                                            "-1" : "blue",
+                                            "10" : "black",
+                                            "01" : "red",
+                                            "00" : "blue"
+                                        }[str((phi.map[j] - phi.map[i]).infty) if (phi.map[j] - phi.map[i]).infty else str(int(w + phi.map[j].value - phi.map[i].value == 0)) + str(int(w + phi.map[j].value - phi.map[i].value > 0))]})
                                         for edge_ind, (i,j,w) in enumerate(self.game.edges)]
                 nodes_with_attributes = [(i,{"shape" : ["circle", "box"][self.game.player[i]],
                                             "regular":1,
                                             "label":util.number_to_letters(i+1,len(util.base26(self.game.size))),
-                                            "color": util.color_of_validity(phi.validity_of_vert[i],"vertex"),
-                                            "style" : "filled"}) for i in range(self.game.size)]
+                                            "color": {
+                                                "1":"red",
+                                                "-1":"blue",
+                                                "[1, 0]":"lightcoral",
+                                                "[0, 1]":"lightblue",
+                                                "[1, 1]":"lightgray"
+                                            }[str(phi.map[i].infty) if phi.map[i].infty else str(phi.validity_of_vert[i])],
+                                            "style" : ["filled", "filled"][phi.map[i].infty]}) for i in range(self.game.size)]
 
                 G = nx.MultiDiGraph()
 
@@ -174,3 +185,6 @@ class execution:
                 
                 A.layout('dot')                                                                 
                 A.draw(transcript_filename + "{:03d}".format(t) + ".png")
+    
+    
+    
