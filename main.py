@@ -7,21 +7,8 @@ import trees
 import util
 import transcript
 
-for i in range(10):
+g = games.game.generate_random_fast_parity(10,2,5)
+g_en = games.game.to_energy_small_weights(g)
 
-    g = games.game.generate_random_fast_parity(10000,2,10000)
-    g_en = g.to_energy()
-
-    #g = games.game(3,4,[(0, 2, 3), (0, 0, 4), (1, 2, 1), (1, 0, 2), (2, 0, 4), (2, 1, 2)], [1,0,0],"parity")
-
-    #print(g.to_string())
-
-
-    exec_snare = energy_executions.execution(g_en, 100000)
-    exec_snare.snare_update(alternating=False)
-    exec_snare.printinfos()
-
-    exec_snareb = energy_executions.execution(g_en, 100000)
-    exec_snareb.snare_update()
-    exec_snareb.printinfos()
-    #print(exec_snareb.solution)
+exec = energy_executions.execution(g_en,10)
+exec.snare_update(draw_transcript=True, transcript_filename="transcripts/test1")

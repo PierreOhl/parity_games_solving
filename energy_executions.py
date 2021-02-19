@@ -5,6 +5,8 @@ import time
 import random as rand
 import util
 from copy import deepcopy
+from networkx.drawing.nx_agraph import to_agraph
+import networkx as nx
 
 
 class execution:
@@ -91,7 +93,7 @@ class execution:
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if (phi.map[i].infty != 0)]
     
-    def snare_update(self, player = 0, write_trajectory = False, alternating = False, chrono = False):
+    def snare_update(self, player = 0, draw_transcript = False, alternating = False, chrono = False, transcript_filename = ""):
         
         start_time=time.time()
         phi = energy_progress_measures.progress_measure(self.game)
@@ -102,8 +104,11 @@ class execution:
             self.infos["algorithm"] = "Asymmetric snare update for " + ["Eve", "Adam"][player]
             
         self.infos["snare updates"] = 0
-            
+        
         pl=player
+        
+        if(draw_transcript):
+            transcript=[]
         
         while(
             (alternating        and any([phi.map[i].infty==0 for i in range(self.game.size)])) or
@@ -114,19 +119,20 @@ class execution:
                 self.is_timeout = True
                 break
             
+            if(draw_transcript):
+                transcript.append(deepcopy(phi))
+            
             phi.snare_lift(pl)
             self.infos["snare updates"] += 1
             
-            if(write_trajectory):
-                phi.write_step_of_trajectory()
-
             if(alternating):
                 pl = 1 - pl
+                
         
         self.infos["runtime"] = time.time() - start_time
         
-        if(write_trajectory):
-            self.infos["trajectory"] = phi.infos["trajectory"]
+        if(draw_transcript):
+            transcript.append(phi)
             
         if(chrono):
             self.infos["chrono"] = phi.infos["chrono"]
@@ -140,4 +146,31 @@ class execution:
             else:
                 self.solution = [i for i in range(self.game.size) if (phi.map[i].infty == 1)]
     
-    
+        if(draw_transcript and self.game.typ == "energy"):
+            
+            for t in range(self.infos["snare updates"]+1):
+                phi=transcript[t]
+                
+                        
+                edges_with_attributes = [(i,j,
+                                        {"label" : w,
+                                        "color" : util.color_of_validity(phi.validity_of_edge[edge_ind],"edge")})
+                                        for edge_ind, (i,j,w) in enumerate(self.game.edges)]
+                nodes_with_attributes = [(i,{"shape" : ["circle", "box"][self.game.player[i]],
+                                            "regular":1,
+                                            "label":util.number_to_letters(i+1,len(util.base26(self.game.size))),
+                                            "color": util.color_of_validity(phi.validity_of_vert[i],"vertex"),
+                                            "style" : "filled"}) for i in range(self.game.size)]
+
+                G = nx.MultiDiGraph()
+
+                G.add_nodes_from(nodes_with_attributes)
+                G.add_edges_from(edges_with_attributes)
+
+                G.graph['edge'] = {'arrowsize': '0.6', 'splines': 'curved'}
+                G.graph['graph'] = {'scale': '1'}
+
+                A = to_agraph(G)
+                
+                A.layout('dot')                                                                 
+                A.draw(transcript_filename + "{:03d}".format(t) + ".png")

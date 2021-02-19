@@ -554,3 +554,35 @@ def argmin(li, player):
                 ind_min = i
     return(li[ind_min][0])
         
+
+def color_of_validity(vtype,ev):
+    if(ev=="edge"):
+        if(vtype==(1,0)):
+            return("red")
+        elif(vtype==(0,1)):
+            return("blue")
+        else:
+            return("black")
+    else:
+        if(vtype==[1,0]):
+            return("lightcoral")
+        elif(vtype==[0,1]):
+            return("lightblue")
+        else:
+            return("gray89")
+
+def base26(n):
+    rep=[]
+    p=n
+    while(p > 0):
+        rep.append(p % 26)
+        p = p // 26
+    return(rep)
+
+def number_to_letters(n,l):
+    b26 = base26(n)
+    rep="A" * (len(b26) - l)
+    alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    for i in range(len(b26)):
+        rep+=alphabet[b26[i]]
+    return(rep)
