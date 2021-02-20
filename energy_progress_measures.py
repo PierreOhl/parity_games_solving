@@ -241,6 +241,41 @@ class progress_measure:
         order.insert(lo, i)
         
         
+    def attribute_of_edge(self, edge_ind):
+        rep={}
+        (i,j,w) = self.game.edges[edge_ind]
+        modified_weight = self.map[j] - self.map[i] + w
+        one_endpoint_infty = self.map[i].infty or self.map[j].infty
+        rep["label"] = modified_weight.to_label()
+        if(modified_weight.infty):
+            rep["color"] = {1:"red", -1:"blue"}[modified_weight.infty]
+        else:
+            if(modified_weight.is_zero()):
+                rep["color"] = "black"
+            elif(modified_weight.is_positive()):
+                rep["color"] = "red"
+            else:
+                rep["color"] = "blue"
+        rep["fontcolor"] = rep["color"]
+        return(rep)
+        
+        
+    def attribute_of_vertex(self, i):
+        rep={}
+        rep["shape"] = ["circle", "box"][self.game.player[i]]
+        rep["regular"] = 1
+        rep["label"] = util.number_to_letters(i+1,len(util.base26(self.game.size)))
+        if(self.map[i].infty):
+            rep["color"] = {1:"red", -1:"blue"}[self.map[i].infty]
+        else:
+            if(self.validity_of_vert[i] == [1,0]):
+                rep["color"] = "lightcoral"
+            elif(self.validity_of_vert[i] == [0,1]):
+                rep["color"] = "lightblue"
+            else:
+                rep["color"] = "lightgray"
+        rep["style"] = "filled"
+        return(rep)
         
         
     def threshold_lift(self, i, growing): #DEPRECATED, NEEDS UPDATING FOR BCDGR

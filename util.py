@@ -29,6 +29,10 @@ class sparse_tuple:
     def is_zero(self):
         return(not(self.infty) and not(self.value))
     
+    def is_positive(self):
+        return(self.infty == 1 or
+               (self.infty == 0 and self.value and ((self.value[0][0] + (self.value[0][1] >0)) % 2== 1)))
+    
     def __eq__(self, other):
         if(self.infty or other.infty):
             return(self.infty == other.infty)
@@ -40,6 +44,8 @@ class sparse_tuple:
     def __add__(self, other):
         if(self.infty):
             return(sparse_tuple(infty=self.infty))
+        if(type(other) is int):
+            return(self + sparse_tuple(value=[(other,1)]))
         if(other.infty):
             return(sparse_tuple(infty=other.infty))
         inds = 0
@@ -351,6 +357,7 @@ class sparse_tuple:
                     return((0,1))
         return((1,1))
     
+    
     def pair_smaller(p1,p2):
         if(p1[0] == p2[0]):
             if(p1[1] == p2[1]):
@@ -360,6 +367,16 @@ class sparse_tuple:
             return(((p1[1] < 0) + p1[0]) % 2)
         else:
             return(((p2[1] > 0) + p2[0]) % 2)
+        
+    
+    def to_label(self):
+        if(self.infty):
+            return(str(self.infty)[:-1] + "∞")
+        else:
+            rep=""
+            for l in range(len(self.value)):
+                rep += "\n" + str(self.value[l][0]) + " : " + str(self.value[l][1])
+            return(rep)
         
 class possibly_infinite_integer:
     '''
@@ -376,6 +393,12 @@ class possibly_infinite_integer:
     
     def set_to_infty(self, infty):
         self.infty = infty
+    
+    def is_zero(self):
+        return(self == 0)
+        
+    def is_positive(self):
+        return(self > 0)
     
     def __eq__(self, b):
         if(type(b) is int):
@@ -451,6 +474,12 @@ class possibly_infinite_integer:
         else:
             return(possibly_infinite_integer(0, infty=(-1)**player))
         
+        
+    def to_label(self):
+        if(self.infty):
+            return(str(self.infty)[:-1] + "∞")
+        else:
+            return(str(self.value))
     
 class partition_plus_node_data:
     '''
