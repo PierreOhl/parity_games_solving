@@ -164,7 +164,6 @@ class progress_measure:
         -   for min* predecessors p of i, update minimal_weight_towards_fixed, and
             if necessary, update order
         '''
-        
         for (p,edge_ind) in [(p,edge_ind) for (p,edge_ind) in self.game.pred[i] if self.validity_of_edge[edge_ind][player] and not(fixed[p])]:
             if(self.game.player[p] == player): #max predecessors
                 number_edges_towards_not_fixed[p] -= 1
@@ -239,7 +238,75 @@ class progress_measure:
             else:
                 lo = mid+1
         order.insert(lo, i)
+    
+    
+    def update_GKK(self):
+        '''
+        implements the algorithm of Gurvich, Karzanov and Khachivan
+        supports only energy games (for now)
+        '''
+        #first, compute attractor to invalids
+        fixed = [not(self.validity_of_vert[i][0]) for i in range(self.game.size)]
+        number_zero_edges_towards_not_fixed = [len([1 for (s,edge_ind) in self.game.succ[i] if not(fixed[s]) and self.validity_of_edge[edge_ind]==(1,1)]) for i in range(self.game.size)]
+        to_add = [i for i in range(self.game.size) if self.game.player[i] and not(fixed[i]) and any([fixed[s] for s,edge_ind in self.game.succ[i] if self.validity_of_edge[edge_ind]==(1,1)])] + [i for i in range(self.game.size) if not(self.game.player[i]) and self.validity_of_vert[i]==(1,1) and number_zero_edges_towards_not_fixed[i] == 0]
+        while(to_add):
+            i=to_add.pop()
+            fixed[i]=True
+            for pred,edge_ind in self.game.pred[i]:
+                if(self.validity_of_edge[edge_ind]==(1,1)):
+                    if(self.game.player[pred]):
+                        to_add.append[pred]
+                    else:
+                        number_zero_edges_towards_not_fixed[pred] -=1
+                        if(number_zero_edges_towards_not_fixed[pred]==0):
+                            to_add.append[pred]
+        #construct relevant sets of weights
+        deltas=[[],[],[],[]]
+        #non-extremal
+        for edge_ind in range(self.game.number_edges):
+            i,j,_ = self.game.edges[edge_ind]
+            if(self.game.player[i] and not(fixed[i]) and fixed[j]):
+                deltas[0].append(self.modified_weight[edge_ind])
+            elif(not(self.game.player[i]) and fixed[i] and not(fixed[j])):
+                deltas[1].append(-self.modified_weight[edge_ind])
+        #extremal
+        for i in range(self.game.size):
+            if(self.game.player[i] and fixed[i] and all([not(fixed[s]) for s,edge_ind in self.game.succ[i] if self.validity_of_edge[edge_ind][1]])):
+                deltas[2].append(max([-self.modified_weight[edge_ind] for s,edge_ind in self.game.succ[i]]))
+            elif(not(self.game.player[i]) and not(fixed[i]) and all([fixed[s] for s,edge_ind in self.game.succ[i] if self.validity_of_edge[edge_ind][0]])):
+                deltas[3].append(max([self.modified_weight[edge_ind] for s,edge_ind in self.game.succ[i]]))
+        #termination case
+        if(all([not(deltas[k]) for k in range(4)])):
+            for i in range(self.game.size):
+                if(fixed[i]):
+                    self.map[i].set_to_infty(-1)
+                else:
+                    self.map[i].set_to_infty(1)
+                return("stop")
+        #compute min
+        delta=[]
+        for k in range(4):
+            if(deltas[k]):
+                delta.append(min(deltas[k]))
+        delta=min(delta)
+        #update
+        for i in range(self.game.size):
+            if(not(fixed[i])):
+                self.map[i] += delta
         
+        for edge_ind in range(self.game.number_edges):
+            i,j,w = self.game.edges[edge_ind]
+            if(fixed[i] and not(fixed[j])):
+                self.modified_weight[edge_ind] += delta
+                self.validity_of_edge[edge_ind]=(self.modified_weight[edge_ind] >= 0, self.modified_weight[edge_ind] <= 0)
+            elif(fixed[j] and not fixed[i]):
+                self.modified_weight[edge_ind] -= delta
+                self.validity_of_edge[edge_ind]=(self.modified_weight[edge_ind] >= 0, self.modified_weight[edge_ind] <= 0)
+        for i in range(self.game.size):
+            self.update_validity_of_vertex(i)
+        
+        return("continue")
+
         
     def attribute_of_edge(self, edge_ind):
         rep={}

@@ -41,6 +41,7 @@ class game:
         max_param = coef[self.max_param]
         return(game(self.size, max_param, edges, self.player,"energy"))
     
+    
     def to_string(self):
         return(self.typ + "\n"
             + str(self.size) + '\n'
@@ -49,8 +50,10 @@ class game:
             + str(self.player)[1:-1]
         )
         
+        
     def boost_weights_to_remove_null_cycles(self):
         return(game(self.size, self.size * self.max_param + 1, [(i,j,self.size*w+1) for (i,j,w) in self.edges], self.player, self.typ))
+    
     
     @classmethod
     def from_string(cls, s):
@@ -115,8 +118,7 @@ class game:
         else:
             player=[int(i<size//2) for i in range(size)]
         
-        return(game(size, max_param, edges, player, "energy"))
-    
+        return(game(size, max_param, edges, player, typ)) 
     
     
     

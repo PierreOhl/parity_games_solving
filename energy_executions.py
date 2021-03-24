@@ -93,6 +93,7 @@ class execution:
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if (phi.map[i].infty != 0)]
     
+    
     def snare_update(self, player = 0, write_transcript = False, alternating = False, chrono = False):
         
         start_time=time.time()
@@ -147,6 +148,40 @@ class execution:
                 self.solution = [i for i in range(self.game.size) if (phi.map[i].infty == 1)]
     
     
+    def solve_GKK(self, write_transcript=False):
+        
+        start_time=time.time()
+        
+        phi = energy_progress_measures.progress_measure(self.game)
+        phi.modified_weight=[w for i,j,w in self.game.edges]
+        
+        self.infos["algorithm"] = "GKK iteration"
+        self.infos["updates"] = 0
+        
+        if(write_transcript):
+            self.transcript=[]
+        
+        r="continue"
+        while(r=="continue"):
+            
+            if(time.time() > start_time + self.timeout):
+                self.is_timeout = True
+                break
+            
+            if(write_transcript):
+                self.transcript.append(deepcopy(phi))
+            
+            r=phi.update_GKK()
+            self.infos["updates"] += 1
+
+        if(write_transcript):
+                self.transcript.append(deepcopy(phi))
+                
+        self.infos["runtime"] = time.time() - start_time
+        
+        self.solution=[i for i in range(self.game.size) if phi.map[i].infty==1]
+        
+    
     def draw_transcript(self, filename, display_future_increments=True):
         for t in range(self.infos["snare updates"]+1):
             phi=self.transcript[t]
@@ -173,6 +208,7 @@ class execution:
             
             A.layout('dot')                                                                 
             A.draw(filename + "{:03d}".format(t) + ".png")
+    
     
     def any_increase_in_max_delta(self):
         max_delta=[]
