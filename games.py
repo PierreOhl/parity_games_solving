@@ -1,6 +1,7 @@
 from copy import deepcopy
 import random as rand
 import os
+import numpy as np
 class game:
     
     def __init__(self, n, max_param, edges, player, typ):
@@ -68,7 +69,7 @@ class game:
     
     @classmethod
     def from_file(cls, filename):
-        file = open("instances/" + filename, 'r')
+        file = open(filename, 'r')
         s = file.read()
         file.close()
         return(game.from_string(s))
@@ -81,28 +82,42 @@ class game:
         
         
     @classmethod
-    def generate_random_fast_energy(cls, size, degree, max_absolute_value):
-        edges=[]
-        for i in range(size):
-            for h in range(degree):
-                j = rand.randrange(size)
-                w = rand.randrange(2*max_absolute_value) - max_absolute_value
-                edges.append((i,j,w))
-        player=[int(i<size//2) for i in range(size)]
-        return(game(size, max_absolute_value, edges, player, "energy"))
-    
-    
-    @classmethod
-    def generate_random_fast_bipartite_energy(cls, size, degree, max_absolute_value):
+    def generate_random(cls, size, max_param, degree=2, bipartite=False, typ="parity", simple=True, one_player=False, all_priorities=False):
         edges=[]
         med = size//2
+        if(all_priorities):
+            perm = np.random.permutation(size)
         for i in range(size):
-            for h in range(degree):
-                j = rand.randrange(med) + (i < med) * med
-                p = rand.randrange(2*max_absolute_value) - max_absolute_value
-                edges.append((i,j,p))
-        player=[int(i<med) for i in range(size)]
-        return(game(size, max_absolute_value, edges, player,"energy"))
+            for h in range(degree): #pick successor at random
+                if(bipartite):
+                    j = rand.randrange(med) + (i < med) * med
+                else:
+                    j = rand.randrange(size)
+                if(simple):
+                    while(any([j2 == j for (i2,j2,_) in edges if i2 == i])):
+                        if(bipartite):
+                            j = rand.randrange(med) + (i < med) * med
+                        else:
+                            j = rand.randrange(size)
+                
+                if(typ == "parity"):
+                    if(all_priorities):
+                        w = perm[i]
+                    else:
+                        w = rand.randrange(max_param)+1
+                else:
+                    w = rand.randrange(2*max_param) - max_param
+                                       
+                edges.append((i,j,w))
+                
+        if(one_player):
+            player=[0 for i in range(size)]
+        else:
+            player=[int(i<size//2) for i in range(size)]
+        
+        return(game(size, max_param, edges, player, "energy"))
+    
+    
     
     
     @classmethod
@@ -298,63 +313,8 @@ class game:
         edges.append((p,q,12*n+8))
         return(game(size, even_top_priority, edges, player, "parity"))
     
-
-    @classmethod
-    def generate_random_parity(cls, size, average_deg):
-        edges=[]
-        for i in range(size):
-            j = rand.randrange(size)
-            p = rand.randrange(size) +1
-            edges.append((i,j,p))
-        if(average_deg > 1):    
-            invproba = size * size // (average_deg-1)
-            for i in range(size):
-                for j in range(size):
-                    for p in range(1,size+1):
-                        r = rand.randrange(invproba)
-                        if(r==0):
-                            edges.append((i,j,p))
-        eve=[int(i<size//2) for i in range(size)]
-        return(game(size, size, edges, eve, "parity"))
     
     
-    @classmethod
-    def generate_random_fast_parity(cls, size, degree, max_prio):
-        edges=[]
-        for i in range(size):
-            for h in range(degree):
-                j = rand.randrange(size)
-                p = rand.randrange(max_prio) +1
-                edges.append((i,j,p))
-        player=[int(i<size//2) for i in range(size)]
-        return(game(size, max_prio, edges, player, "parity"))
-    
-    
-    @classmethod
-    def generate_random_fast_bipartite_parity(cls, size, degree, max_prio):
-        edges=[]
-        med = size//2
-        for i in range(size):
-            for h in range(degree):
-                j = rand.randrange(med) + (i < med) * med
-                p = rand.randrange(max_prio) +1
-                edges.append((i,j,p))
-        player=[int(i<med) for i in range(size)]
-        return(game(size, max_prio, edges, player, "parity"))
-
-    
-    @classmethod
-    def generate_random_fast_bipartite_opponent_edges_parity(cls, size, degree, max_prio):
-        edges=[]
-        med = size//2
-        for i in range(size):
-            for h in range(degree):
-                j = rand.randrange(med) + (i < med) * med
-                p = 2*(rand.randrange(max_prio//2)) + (i<med) +1
-                edges.append((i,j,p))
-        player=[int(i<med) for i in range(size)]
-        return(game(size, max_prio, edges, player, "parity"))
-
 
 class parity_game_priorities_on_vertices:
 
@@ -413,6 +373,7 @@ class parity_game_priorities_on_vertices:
                 edges.append((i, rand.randrange(size//2) + med * (i<med)))
         return(parity_game_priorities_on_vertices(size, max_priority, edges, player, priorities))
     
+    
     @classmethod
     def generate_random_bipartite_all_priorities(cls, size, degree):
         edges=[]
@@ -424,12 +385,14 @@ class parity_game_priorities_on_vertices:
                 edges.append((i, rand.randrange(size//2) + med * (i<med)))
         return(parity_game_priorities_on_vertices(size, size, edges, player, priorities))
     
+    
     @classmethod
     def from_file(cls, filename):
         f = open("instances/parity_vertices/" + filename)
         s = f.read()
         f.close()
         return(parity_game_priorities_on_vertices.from_string(s))
+    
     
     @classmethod
     def from_string(cls, s):

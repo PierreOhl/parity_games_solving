@@ -7,10 +7,16 @@ import trees
 import util
 import transcript
 
-n=15
-maxw = 150
-for i in range(100):
-    g = games.game.generate_random_fast_energy(n,2,maxw)
-
-    exec = energy_executions.execution(g,10)
-    exec.snare_update(draw_transcript=True, transcript_filename="transcripts/random15ene_sym/inst{:02d}_iter".format(i), alternating=True)
+i=0
+while(True):
+    print("try",i)
+    i+=1
+    g = games.game.generate_random_fast_energy(20,2,1000)
+    e = energy_executions.execution(g,10)
+    e.snare_update(write_transcript=True)
+    md = e.any_increase_in_max_delta()
+    if(any([(type(md[i]) is int and type(md[i+1]) is int and md[i+1] > md[i]) for i in range(len(md) -1)])):
+        print("ici")
+        print(md)
+        e.draw_transcript("transcripts/test3")
+        break

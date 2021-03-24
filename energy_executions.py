@@ -93,7 +93,7 @@ class execution:
         self.infos["runtime"] = time.time() - start_time
         self.solution = [i for i in range(self.game.size) if (phi.map[i].infty != 0)]
     
-    def snare_update(self, player = 0, draw_transcript = False, alternating = False, chrono = False, transcript_filename = ""):
+    def snare_update(self, player = 0, write_transcript = False, alternating = False, chrono = False):
         
         start_time=time.time()
         phi = energy_progress_measures.progress_measure(self.game)
@@ -107,8 +107,8 @@ class execution:
         
         pl=player
         
-        if(draw_transcript):
-            transcript=[]
+        if(write_transcript):
+            self.transcript=[]
         
         while(
             (alternating        and any([phi.map[i].infty==0 for i in range(self.game.size)])) or
@@ -119,8 +119,8 @@ class execution:
                 self.is_timeout = True
                 break
             
-            if(draw_transcript):
-                transcript.append(deepcopy(phi))
+            if(write_transcript):
+                self.transcript.append(deepcopy(phi))
             
             phi.snare_lift(pl)
             self.infos["snare updates"] += 1
@@ -131,8 +131,8 @@ class execution:
         
         self.infos["runtime"] = time.time() - start_time
         
-        if(draw_transcript):
-            transcript.append(phi)
+        if(write_transcript):
+            self.transcript.append(phi)
             
         if(chrono):
             self.infos["chrono"] = phi.infos["chrono"]
@@ -146,26 +146,44 @@ class execution:
             else:
                 self.solution = [i for i in range(self.game.size) if (phi.map[i].infty == 1)]
     
-        if(draw_transcript):
-            
-            for t in range(self.infos["snare updates"]+1):
-                phi=transcript[t]
-                        
-                edges_with_attributes = [(i,j,phi.attribute_of_edge(edge_ind)) for edge_ind, (i,j,_) in enumerate(self.game.edges)]
-                nodes_with_attributes = [(i,phi.attribute_of_vertex(i)) for i in range(self.game.size)]
-
-                G = nx.MultiDiGraph()
-
-                G.add_nodes_from(nodes_with_attributes)
-                G.add_edges_from(edges_with_attributes)
-
-                G.graph['edge'] = {'arrowsize': '0.6', 'splines': 'curved'}
-                G.graph['graph'] = {'scale': '1'}
-
-                A = to_agraph(G)
-                
-                A.layout('dot')                                                                 
-                A.draw(transcript_filename + "{:03d}".format(t) + ".png")
     
+    def draw_transcript(self, filename, display_future_increments=True):
+        for t in range(self.infos["snare updates"]+1):
+            phi=self.transcript[t]
+                    
+            edges_with_attributes = [(i,j,phi.attribute_of_edge(edge_ind)) for edge_ind, (i,j,_) in enumerate(self.game.edges)]
+            nodes_with_attributes = [(i,phi.attribute_of_vertex(i)) for i in range(self.game.size)]
+
+            if(display_future_increments):
+                for i in range(self.game.size):
+                    if(t == self.infos["snare updates"]):
+                        nodes_with_attributes[i][1]["label"] = "0"
+                    else:
+                        nodes_with_attributes[i][1]["label"]=(self.transcript[t+1].map[i] - self.transcript[t].map[i]).to_label()
+
+            G = nx.MultiDiGraph()
+
+            G.add_nodes_from(nodes_with_attributes)
+            G.add_edges_from(edges_with_attributes)
+
+            G.graph['edge'] = {'arrowsize': '0.6', 'splines': 'curved'}
+            G.graph['graph'] = {'scale': '1'}
+
+            A = to_agraph(G)
+            
+            A.layout('dot')                                                                 
+            A.draw(filename + "{:03d}".format(t) + ".png")
+    
+    def any_increase_in_max_delta(self):
+        max_delta=[]
+        for t in range(self.infos["snare updates"]):
+            if(any([self.transcript[t].validity_of_vert[i][0] == 0 and self.transcript[t+1].validity_of_vert[i][0] == 1 for i in range(self.game.size)])):
+                max_delta.append("new_invalid_vertices")
+            elif(any([self.transcript[t+1].map[i].infty and self.transcript[t].map[i].infty == 0 for i in range(self.game.size)])):
+                max_delta.append("new_infinite_vertices")
+            #elif(any([(self.transcript[t+1].map[i] - self.transcript[t].map[i]).infty == 0 for i in range(self.game.size)])):
+            else:
+                max_delta.append(max([(self.transcript[t+1].map[i] - self.transcript[t].map[i]).value for i in range(self.game.size) if (self.transcript[t+1].map[i] - self.transcript[t].map[i]).infty == 0]))
+        return(max_delta)
     
     
