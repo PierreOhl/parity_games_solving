@@ -37,3 +37,5 @@ class transcript:
             infos["iterations"] = 0
             infos["runtime"] = float(lines[6][2:6])
         return(transcript(size, max_param, deg, 0, is_timeout, infos))
+
+    

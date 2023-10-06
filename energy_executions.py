@@ -223,3 +223,14 @@ class execution:
         return(max_delta)
     
     
+    def does_type_vector_repeat(self):
+        length=self.infos["snare updates"] +1
+        configs=[self.transcript[t].type_config() for t in range(length)]
+        rep=False
+        for a in range(length):
+            for b in range(a+1,length):
+                if (configs[a] == configs[b]):
+                    rep=True
+                    print(a,b)
+                    print(configs[a],configs[b])
+        return(rep)

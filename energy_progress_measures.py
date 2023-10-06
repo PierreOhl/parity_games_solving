@@ -1,3 +1,4 @@
+from operator import truediv
 import util
 import time
 from copy import deepcopy
@@ -352,3 +353,13 @@ class progress_measure:
             self.dest_of_vert[i] = util.possibly_infinite_integer(0,-1) #set dest to -infinity
         self.update_map(i, self.dest_of_vert[i], growing)
     
+
+    def type_config(self):
+        rep=[0]*self.game.size
+        for i in range(self.game.size):
+            succweights=[(self.map[j] - self.map[i] + self.game.edges[edge_ind][2]) for (j,edge_ind) in self.game.succ[i]]
+            if(all([w<0 for w in succweights])):
+                rep[i]=-1
+            if(any([w>0 for w in succweights])):
+                rep[i]=1
+        return(rep)

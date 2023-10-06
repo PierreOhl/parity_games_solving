@@ -7,15 +7,13 @@ import trees
 import util
 import transcript
 
-g=games.game.generate_random(3,3,typ="energy")
+g=games.game.generate_random(10,100,typ="energy",one_player=True)
+
 
 exec=energy_executions.execution(g,10)
-exec.snare_update()
+exec.snare_update(alternating=True, write_transcript=True)
 exec.printinfos()
-
-execGKK=energy_executions.execution(g,10000)
-execGKK.solve_GKK()
-execGKK.printinfos()
+exec.draw_transcript(filename="drawings/test1")
+print(exec.does_type_vector_repeat())
 
 print(exec.solution)
-print(execGKK.solution)
