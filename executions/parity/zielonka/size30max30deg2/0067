@@ -1,4 +1,0 @@
-timeout: 100
-is_timeout: False
-solution: []
-infos: {'equivalent updates': 120, 'algorithm': 'Zielonka recursive', 'recursive calls': 127, 'runtime': 0.01861429214477539}

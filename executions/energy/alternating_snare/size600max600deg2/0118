@@ -1,4 +1,0 @@
-timeout: 100
-is_timeout: False
-solution: []
-infos: {'algorithm': 'Alternating snare update', 'snare updates': 12, 'spent': 6.171220064163208, 'equivalent updates': 1384, 'runtime': 9.089587688446045}

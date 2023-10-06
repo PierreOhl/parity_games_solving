@@ -1,4 +1,0 @@
-timeout: 100
-is_timeout: False
-solution: [306, 312, 461, 468, 497, 512, 527, 551, 555]
-infos: {'equivalent updates': 12906, 'algorithm': 'Zielonka recursive', 'recursive calls': 11963, 'runtime': 0.49248623847961426}

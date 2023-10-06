@@ -1,4 +1,0 @@
-timeout: 100
-is_timeout: False
-solution: [0, 5, 7, 15, 16, 17, 18, 20, 21, 25, 28, 29]
-infos: {'algorithm': 'Asymmetric snare update for Eve', 'snare updates': 5, 'spent': 0.004281520843505859, 'equivalent updates': 30, 'runtime': 0.00844717025756836}

@@ -1,4 +1,0 @@
-timeout: 100
-is_timeout: False
-solution: []
-infos: {'algorithm': 'Asymmetric snare update for Eve', 'snare updates': 12, 'spent': 5.9263834953308105, 'equivalent updates': 658, 'runtime': 7.334562063217163}

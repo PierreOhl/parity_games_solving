@@ -1,4 +1,0 @@
-timeout: 100
-is_timeout: False
-solution: [241, 317, 326, 331, 346, 349, 370, 394, 406, 409, 443, 456, 464, 470, 482, 506, 517, 520, 534, 537, 582]
-infos: {'algorithm': 'Asymmetric snare update for Eve', 'snare updates': 18, 'spent': 10.30408263206482, 'equivalent updates': 1038, 'runtime': 13.20778489112854}

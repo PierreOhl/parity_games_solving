@@ -1,4 +1,0 @@
-timeout: 100
-is_timeout: False
-solution: [78, 81, 91, 146, 194, 228, 239, 267, 272, 278, 561]
-infos: {'algorithm': 'Asymmetric snare update for Adam', 'snare updates': 13, 'spent': 6.509996652603149, 'equivalent updates': 1112, 'runtime': 9.118432521820068}
