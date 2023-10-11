@@ -52,7 +52,7 @@ class game:
         
         
     def boost_weights_to_remove_null_cycles(self):
-        return(game(self.size, self.size * self.max_param + 1, [(i,j,self.size*w+1) for (i,j,w) in self.edges], self.player, self.typ))
+        return(game(self.size, (self.size + 1) * self.max_param + 1, [(i, j, (self.size + 1) * w + 1) for (i,j,w) in self.edges], self.player, self.typ))
     
     
     @classmethod
@@ -91,17 +91,20 @@ class game:
         if(all_priorities):
             perm = np.random.permutation(size)
         for i in range(size):
+            if simple:
+                successors = set()
             for h in range(degree): #pick successor at random
                 if(bipartite):
                     j = rand.randrange(med) + (i < med) * med
                 else:
                     j = rand.randrange(size)
                 if(simple):
-                    while(any([j2 == j for (i2,j2,_) in edges if i2 == i])):
+                    while(j in successors):
                         if(bipartite):
                             j = rand.randrange(med) + (i < med) * med
                         else:
                             j = rand.randrange(size)
+                    successors.add(j)
                 
                 if(typ == "parity"):
                     if(all_priorities):
