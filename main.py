@@ -1,13 +1,15 @@
 import games
 import parity_progress_measures
 import energy_progress_measures
+import energy_progress_measures_fast # second implementation
 import parity_executions
 import energy_executions
+import energy_executions_fast # second implementation
 import trees
 import util
 import transcript
 
-ex=3
+ex=1
 
 if(ex==1):
     ###############
@@ -15,10 +17,26 @@ if(ex==1):
     ###############
 
     print("EXAMPLE 1")
-
-    # generate a random energy game of size 10 and degree 2 (this is default)
+    print("Compares the speed of the new implementation to the previous one")
+    
+    # generate a random energy game of size 100 and degree 2 (this is default)
     # and with weights up to 100
-    g=games.game.generate_random(10,100,typ="energy")
+    g = games.game.generate_random(100,100,degree=2,typ="energy")
+    g = g.boost_weights_to_remove_null_cycles()
+    
+    # initialize execution with timeout of 10 seconds
+    exec=energy_executions_fast.execution(g,10)
+
+    # rune snare_update algorithm (this is FVI). We enable the option that
+    # saves the transcript (this makes the algorithm much slower, but 
+    # allows to visual it afterwards)
+    exec.snare_update(write_transcript=False)
+
+    # we print some basic information in the console (runtime etc) 
+    exec.printinfos()
+    
+    # we print the solution
+    print(exec.solution)
 
     # initialize execution with timeout of 10 seconds
     exec=energy_executions.execution(g,10)
@@ -26,21 +44,17 @@ if(ex==1):
     # rune snare_update algorithm (this is FVI). We enable the option that
     # saves the transcript (this makes the algorithm much slower, but 
     # allows to visual it afterwards)
-    exec.snare_update(write_transcript=True)
+    exec.snare_update(player=1, write_transcript=False)
 
     # we print some basic information in the console (runtime etc) 
     exec.printinfos()
-
+    
     # we print the solution
-    print("solution set is " + str(exec.solution))
-
-    # we draw the steps of the execution in the folder drawings/test1/...
-    # the folder has to already exist, otherwise there will be an error
-    exec.draw_transcript(filename="drawings/test1/")
-
-    print("\n \nEXAMPLE 2")
+    print(exec.solution)
 
 if(ex==2):
+    print("\n \nEXAMPLE 2")
+
     ###############
     ## EXAMPLE 2 ## (showing difference between parity and energy versions of the algorithms)
     ###############
