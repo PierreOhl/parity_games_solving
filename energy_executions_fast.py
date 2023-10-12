@@ -5,7 +5,7 @@ import time
 import random as rand
 import util
 from copy import deepcopy
-from networkx.drawing.nx_agraph import to_agraph
+from networkx.drawing.nx_agraph import to_agraph # To remove to execute with Pypy3
 import networkx as nx
 
 
@@ -24,7 +24,7 @@ class execution:
         self.timeout = timeout
         self.is_timeout = False
         self.solution = []
-        self.infos={}
+        self.infos = {}
                 
     def printinfos(self):
         print("infos:", self.infos)
@@ -68,26 +68,29 @@ class execution:
         return from_string(s)
 
     
-    # TODO: the reimplementation only supports player = 0 and alternating = False
+    # TODO: the reimplementation currently only supports energy games
     def snare_update(self, player = 0, write_transcript = False, alternating = False, chrono = False):
         
-        start_time=time.time()
+        start_time = time.time()
         phi = energy_progress_measures_fast.progress_measure(self.game)
         
         if(alternating):
-            self.infos["algorithm"] = "Alternating snare update"
-            raise ValueError("Not implemented (yet?) in this reimplementation.")
+            self.infos["algorithm"] = "Alternating snare update starting with " + ["Eve", "Adam"][player]
         else:
             self.infos["algorithm"] = "Asymmetric snare update for " + ["Eve", "Adam"][player]
             
         self.infos["snare updates"] = 1
         
-        pl=player
-        
         if write_transcript:
             self.transcript = [deepcopy(phi)]
         
-        while phi.snare_lift(pl):            
+        if player == 1:
+            phi.alternate_game()
+        
+        current_player = player # May change in case of alternation
+        
+        while phi.snare_lift() or\
+              (alternating and any(phi.map[v] != float("-inf") and phi.map[v] != float("inf") for v in range(self.game.size))):
             if(time.time() > start_time + self.timeout):
                 self.is_timeout = True
                 break
@@ -98,21 +101,18 @@ class execution:
             self.infos["snare updates"] += 1
             
             if(alternating):
-                pl = 1 - pl
+                current_player = 1 - current_player
+                phi.alternate_game()
                 
         self.infos["runtime"] = time.time() - start_time
             
         if(chrono):
             self.infos["chrono"] = phi.infos["chrono"]
-        
-        # if(alternating):
-        #    self.solution = [i for i in range(self.game.size) if (phi.map[i].infty == 1)]
 
-        # else:
-        #    if(player):
-        #        self.solution = [i for i in range(self.game.size) if (phi.map[i].infty != -1)]
-        #    else:
-        self.solution = [i for i in range(self.game.size) if phi.map[i] != float("-inf")]
+        if current_player == 0:
+            self.solution = [i for i in range(self.game.size) if phi.map[i] != float("-inf")]
+        else:
+            self.solution = [i for i in range(self.game.size) if phi.map[i] != float("inf")]
         
     
     def draw_transcript(self, filename, display_future_increments=True):

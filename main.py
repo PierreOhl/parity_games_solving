@@ -17,40 +17,63 @@ if(ex==1):
     ###############
 
     print("EXAMPLE 1")
-    print("Compares the speed of the new implementation to the previous one")
+    print("Compares the speed of the new implementation to the previous one " +
+          "for not alternating and alternating.")
     
     # generate a random energy game of size 100 and degree 2 (this is default)
     # and with weights up to 100
-    g = games.game.generate_random(100,100,degree=2,typ="energy")
+    g = games.game.generate_random(100, 100, degree=2, typ="energy")
+    timeout = 10
     g = g.boost_weights_to_remove_null_cycles()
     
     # initialize execution with timeout of 10 seconds
-    exec=energy_executions_fast.execution(g,10)
+    exec = energy_executions_fast.execution(g, timeout)
 
-    # rune snare_update algorithm (this is FVI). We enable the option that
-    # saves the transcript (this makes the algorithm much slower, but 
-    # allows to visual it afterwards)
-    exec.snare_update(write_transcript=False)
+    # run snare_update algorithm (this is FVI).
+    exec.snare_update(write_transcript = False, alternating = False)
 
     # we print some basic information in the console (runtime etc) 
     exec.printinfos()
-    
-    # we print the solution
-    print(exec.solution)
+    solution1 = exec.solution
 
     # initialize execution with timeout of 10 seconds
-    exec=energy_executions.execution(g,10)
+    exec = energy_executions.execution(g, timeout)
 
-    # rune snare_update algorithm (this is FVI). We enable the option that
-    # saves the transcript (this makes the algorithm much slower, but 
-    # allows to visual it afterwards)
-    exec.snare_update(player=1, write_transcript=False)
+    # run snare_update algorithm (this is FVI).
+    exec.snare_update(player = 1, write_transcript = False)
 
     # we print some basic information in the console (runtime etc) 
     exec.printinfos()
+    solution2 = exec.solution
     
-    # we print the solution
-    print(exec.solution)
+    # initialize execution with timeout of 10 seconds
+    exec = energy_executions_fast.execution(g, timeout)
+
+    # run snare_update algorithm (this is FVI).
+    exec.snare_update(write_transcript = False, alternating = True)
+
+    # we print some basic information in the console (runtime etc) 
+    exec.printinfos()
+    solution3 = exec.solution
+    
+    # initialize execution with timeout of 10 seconds
+    exec = energy_executions.execution(g, timeout)
+
+    # run snare_update algorithm (this is FVI).
+    exec.snare_update(player = 1, write_transcript = False, alternating = True)
+
+    # we print some basic information in the console (runtime etc) 
+    exec.printinfos()
+    solution4 = exec.solution
+    
+    if solution1 != solution2 or solution2 != solution3 or solution3 != solution4:
+        print(g.edges)
+        print(g.player)
+        print(solution1)
+        print(solution2)
+        print(solution3)
+        print(solution4)
+        raise ValueError("The algorithms do not agree")
 
 if(ex==2):
     print("\n \nEXAMPLE 2")

@@ -7,25 +7,31 @@ class progress_measure:
         self.game = game
         
         # Change the game data structures so that things can be easily deleted
-        self.remaining_vertices = {i for i in range(game.size)} # Keep only vertices not yet assigned +/-infty
+        self.remaining_vertices = {v for v in range(game.size)} # Keep only vertices not yet assigned +/-infty
         self.remaining_succ = [set() for _ in range(game.size)]
         self.remaining_pred = [set() for _ in range(game.size)]
         self.current_weights = {}
+        self.current_player = [self.game.player[v] == 0 for v in range(game.size)]
         for edge in game.edges:
             self.remaining_succ[edge[0]].add(edge[1]) # ! Assume at most one edge between two directed vertices
             self.remaining_pred[edge[1]].add(edge[0])
             self.current_weights[(edge[0], edge[1])] = edge[2]
-            
-        # if game.typ == "energy":
+        
         self.map = [None for _ in range(game.size)] # potential values
-        # else:
-        #    self.map = [util.sparse_tuple() for _ in range(game.size)]
+    
+    def alternate_game(self):
+        for v in range(self.game.size):
+            self.current_player[v] = not self.current_player[v]
+            if self.map[v] is not None:
+                self.map[v] = - self.map[v]
+        for pair, w in self.current_weights.items():
+            self.current_weights[pair] = -w
 
-    # TODO: Currently only implements the case player == 0, which is maximizing   
-    def snare_lift(self, player):
+    # Assumes player == 0 is the maximizing player. Use alternate_game() beforehand to "inverse" the valuation.
+    def snare_lift(self):
         # --- Data structure initialisation ---
         
-        # List the vertices of the main player going to the fixed region;
+        # List the edges of the main player going to the fixed region;
         # should only be accessed through functions from heapq
         heap_edges_to_fixed = []
         
@@ -33,7 +39,7 @@ class progress_measure:
         number_nonpositive_outgoing_edges = {}
         for v in self.remaining_vertices:
             self.map[v] = None
-            if self.game.player[v] == 1:
+            if not self.current_player[v]: # opponent
                 number_nonpositive_outgoing_edges[v] = sum(1 for v2 in self.remaining_succ[v] if self.current_weights[(v, v2)] <= 0)
         
         # Vertices for which the value is known but must still be processed
@@ -41,11 +47,11 @@ class progress_measure:
         
         # Initialisation: fix vertices that reach a positive edge in one step
         for v in self.remaining_vertices:
-            if self.game.player[v] == 0:
+            if self.current_player[v]:
                 if any(self.current_weights[(v, v2)] > 0 for v2 in self.remaining_succ[v]):
                     to_treat.append(v)
                     self.map[v] = 0
-            else: # player[v] == 1
+            else: # vertex of the opponent
                 if all(self.current_weights[(v, v2)] > 0 for v2 in self.remaining_succ[v]):
                     to_treat.append(v)
                     self.map[v] = 0
@@ -56,18 +62,18 @@ class progress_measure:
                 v2 = to_treat.pop()
                 for v1 in self.remaining_pred[v2]:
                     w = self.current_weights[(v1, v2)]
-                    if self.game.player[v1] == 0:
+                    if self.current_player[v1]:
                         # Weight comes first to exploit the min lexicographic ordering, the "-" is a quick hack to inverse the ordering
-                        heapq.heappush(heap_edges_to_fixed, (- (w + self.map[v2]), v1, v2))
-                    elif w <= 0: # player[v1] == 1
+                        heapq.heappush(heap_edges_to_fixed, (- (w + self.map[v2]), v1))
+                    elif w <= 0: # opponent vertex and nonpositive weight
                         number_nonpositive_outgoing_edges[v1] -= 1
                         if number_nonpositive_outgoing_edges[v1] == 0:
                             to_treat.append(v1)
                             self.map[v1] = min(self.map[v3] + self.current_weights[(v1, v3)] for v3 in self.remaining_succ[v1] if self.current_weights[(v1, v3)] <= 0)
             
-            # If nothing to treat left, takes the smallest edge from the main player
+            # If nothing to treat left, takes the smallest edge from the main player to the fixed region
             if heap_edges_to_fixed:
-                w, v1, v2 = heapq.heappop(heap_edges_to_fixed) # smallest edge from player to fixed region
+                w, v1 = heapq.heappop(heap_edges_to_fixed) # smallest edge from player to fixed region
                 if self.map[v1] == None: # Not fixed yet
                     to_treat.append(v1)
                     self.map[v1] = - w # Quick hack for the w here, as it was inverted earlier
