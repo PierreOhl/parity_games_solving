@@ -8,11 +8,13 @@ class progress_measure:
         
         # Change the game data structures so that things can be easily deleted
         self.remaining_vertices = {i for i in range(game.size)} # Keep only vertices not yet assigned +/-infty
-        self.remaining_succ = [{} for _ in range(game.size)]
-        self.remaining_pred = [{} for _ in range(game.size)]
+        self.remaining_succ = [set() for _ in range(game.size)]
+        self.remaining_pred = [set() for _ in range(game.size)]
+        self.current_weights = {}
         for edge in game.edges:
-            self.remaining_succ[edge[0]][edge[1]] = edge[2] # ! Assume at most one edge between two directed vertices
-            self.remaining_pred[edge[1]][edge[0]] = edge[2]
+            self.remaining_succ[edge[0]].add(edge[1]) # ! Assume at most one edge between two directed vertices
+            self.remaining_pred[edge[1]].add(edge[0])
+            self.current_weights[(edge[0], edge[1])] = edge[2]
             
         # if game.typ == "energy":
         self.map = [None for _ in range(game.size)] # potential values
@@ -32,7 +34,7 @@ class progress_measure:
         for v in self.remaining_vertices:
             self.map[v] = None
             if self.game.player[v] == 1:
-                number_nonpositive_outgoing_edges[v] = sum(1 for w in self.remaining_succ[v].values() if w <= 0)
+                number_nonpositive_outgoing_edges[v] = sum(1 for v2 in self.remaining_succ[v] if self.current_weights[(v, v2)] <= 0)
         
         # Vertices for which the value is known but must still be processed
         to_treat = []
@@ -40,11 +42,11 @@ class progress_measure:
         # Initialisation: fix vertices that reach a positive edge in one step
         for v in self.remaining_vertices:
             if self.game.player[v] == 0:
-                if any(w > 0 for w in self.remaining_succ[v].values()):
+                if any(self.current_weights[(v, v2)] > 0 for v2 in self.remaining_succ[v]):
                     to_treat.append(v)
                     self.map[v] = 0
             else: # player[v] == 1
-                if all(w > 0 for w in self.remaining_succ[v].values()):
+                if all(self.current_weights[(v, v2)] > 0 for v2 in self.remaining_succ[v]):
                     to_treat.append(v)
                     self.map[v] = 0
         
@@ -52,7 +54,8 @@ class progress_measure:
         while to_treat or heap_edges_to_fixed:
             while to_treat:
                 v2 = to_treat.pop()
-                for (v1, w) in self.remaining_pred[v2].items():
+                for v1 in self.remaining_pred[v2]:
+                    w = self.current_weights[(v1, v2)]
                     if self.game.player[v1] == 0:
                         # Weight comes first to exploit the min lexicographic ordering, the "-" is a quick hack to inverse the ordering
                         heapq.heappush(heap_edges_to_fixed, (- (w + self.map[v2]), v1, v2))
@@ -60,7 +63,7 @@ class progress_measure:
                         number_nonpositive_outgoing_edges[v1] -= 1
                         if number_nonpositive_outgoing_edges[v1] == 0:
                             to_treat.append(v1)
-                            self.map[v1] = min(self.map[v2] + w2 for (v2, w2) in self.remaining_succ[v1].items() if w2 <= 0)
+                            self.map[v1] = min(self.map[v3] + self.current_weights[(v1, v3)] for v3 in self.remaining_succ[v1] if self.current_weights[(v1, v3)] <= 0)
             
             # If nothing to treat left, takes the smallest edge from the main player
             if heap_edges_to_fixed:
@@ -75,15 +78,16 @@ class progress_measure:
         for v in vertices_to_remove:
             self.map[v] = float("-inf")
             self.remaining_vertices.remove(v)
-            for v2 in list(self.remaining_succ[v].keys()):
-                del self.remaining_succ[v][v2]
-                del self.remaining_pred[v2][v]
+            for v2 in list(self.remaining_succ[v]):
+                self.remaining_succ[v].remove(v2)
+                self.remaining_pred[v2].remove(v)
+                del self.current_weights[(v, v2)]
         
         # Update the value of the remaining edges using the potential value
         for v in self.remaining_vertices:
-            for v2, w in self.remaining_succ[v].items():
-                self.remaining_succ[v][v2] = w + self.map[v2] - self.map[v]
-                self.remaining_pred[v2][v] = w + self.map[v2] - self.map[v]
+            for v2 in self.remaining_succ[v]:
+                if self.map[v] != self.map[v2]: # Used to limit the number of operations
+                    self.current_weights[(v, v2)] += self.map[v2] - self.map[v]
         
         # Return True if it was not the last iteration (something changed), False otherwise
         return (vertices_to_remove and self.remaining_vertices) or any(self.map[v] != 0 for v in self.remaining_vertices)
