@@ -94,7 +94,7 @@ class execution:
         self.solution = [i for i in range(self.game.size) if (phi.map[i].infty != 0)]
     
     
-    def snare_update(self, player = 0, write_transcript = False, alternating = False, chrono = False):
+    def snare_update(self, player = 0, write_transcript = False, alternating = False, chrono = False, verbose=False):
         
         start_time=time.time()
         phi = energy_progress_measures.progress_measure(self.game)

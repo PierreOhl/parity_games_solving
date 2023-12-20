@@ -18,10 +18,15 @@ class game:
             self.succ[edges[edge_ind][0]].append((edges[edge_ind][1], edge_ind))
     
     
-    def to_energy(self):
+    def to_energy(self, power_two=True):
         if(self.typ == "energy"):
             return(self)
-        edges = [(i,j,((-1)* self.size) ** p) for (i,j,p) in self.edges]
+        basis = self.size
+        if power_two:
+            basis = 1
+            while basis <= self.size:
+                basis *=2
+        edges = [(i,j,((-1)* basis) ** p) for (i,j,p) in self.edges]
         max_param = self.size ** self.max_param
         return(game(self.size, max_param, edges, self.player,"energy"))
     

@@ -6,8 +6,9 @@ import energy_executions
 import trees
 import util
 import transcript
+import time
 
-ex=3
+ex=2
 
 if(ex==1):
     ###############
@@ -47,7 +48,7 @@ if(ex==2):
 
     # generate a random parity game of size 10 000 and degree 2
     # and with priorities up to 10 000
-    g=games.game.generate_random(10000,10000, typ = "parity")
+    g=games.game.generate_random(5000,5000, typ = "parity")
 
     # first make an execution the algorithm with timeout 30 sec
     exec=energy_executions.execution(g,30)
