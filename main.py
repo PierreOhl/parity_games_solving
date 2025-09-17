@@ -8,7 +8,7 @@ import util
 import transcript
 import time
 
-ex=2
+ex=1
 
 if(ex==1):
     ###############
@@ -19,7 +19,7 @@ if(ex==1):
 
     # generate a random energy game of size 10 and degree 2 (this is default)
     # and with weights up to 100
-    g=games.game.generate_random(10,100,typ="energy")
+    g=games.game.generate_random(1000,10000)
 
     # initialize execution with timeout of 10 seconds
     exec=energy_executions.execution(g,10)

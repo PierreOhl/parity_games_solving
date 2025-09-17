@@ -185,9 +185,20 @@ class execution:
     def draw_transcript(self, filename, display_future_increments=True):
         for t in range(self.infos["snare updates"]+1):
             phi=self.transcript[t]
-                    
+            color=[0]*phi.game.size
+            for i in range(phi.game.size):
+                if(phi.map[i].infty):
+                    color[i] = {1:"red", -1:"blue"}[self.map[i].infty]
+                else:
+                    if(phi.validity_of_vert[i] == [1,0]):
+                        color[i] = "lightcoral"
+                    elif(phi.validity_of_vert[i] == [0,1]):
+                        color[i] = "lightblue"
+                    else:
+                        color[i] = "lightgray"
+                
             edges_with_attributes = [(i,j,phi.attribute_of_edge(edge_ind)) for edge_ind, (i,j,_) in enumerate(self.game.edges)]
-            nodes_with_attributes = [(i,phi.attribute_of_vertex(i)) for i in range(self.game.size)]
+            nodes_with_attributes = [(i,phi.attribute_of_vertex(i, color[i])) for i in range(self.game.size)]
 
             if(display_future_increments):
                 for i in range(self.game.size):
@@ -208,7 +219,7 @@ class execution:
             
             A.layout('dot')                                                                 
             A.draw(filename + "{:03d}".format(t) + ".png")
-    
+        
     
     def any_increase_in_max_delta(self):
         max_delta=[]
@@ -234,3 +245,33 @@ class execution:
                     print(a,b)
                     print(configs[a],configs[b])
         return(rep)
+
+    
+    def test1(self):
+        phi=energy_progress_measures.progress_measure(self.game)
+        (N,P,ZN,ZP)=phi.compute_zones()
+        print(ZN, ZP)
+        S=[0,1,0,0,1,1]
+        sub,incl=self.game.subgame(S)
+        print(sub.edges)
+        print(incl)
+
+
+    def recursive_reduction(self, choice_mode="smallest", choice_prescription=[]):
+
+        start_time=time.time()
+        phi = energy_progress_measures.progress_measure(self.game, alg="recursive")
+
+
+        if(choice_mode=='top_level_prescribed'):
+            phi.infos['prescribed_choices']=choice_prescription
+
+        _,ZP,_=phi.resolve_game(choice_mode) #call to main recursive procedure
+        
+        self.infos=phi.infos
+
+        self.infos["runtime"] = time.time() - start_time
+        self.infos["algorithm"]="recursive"
+
+        self.solution = [i for i in range(self.game.size) if ZP[i]]
+

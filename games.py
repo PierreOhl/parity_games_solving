@@ -2,6 +2,7 @@ from copy import deepcopy
 import random as rand
 import os
 import numpy as np
+
 class game:
     
     def __init__(self, n, max_param, edges, player, typ):
@@ -17,6 +18,23 @@ class game:
             self.pred[edges[edge_ind][1]].append((edges[edge_ind][0], edge_ind))
             self.succ[edges[edge_ind][0]].append((edges[edge_ind][1], edge_ind))
     
+    def subgame(self,S): #returns subgame over S and inclusion map
+        size=sum(S)
+        incl=[i for i in range(self.size) if S[i]]
+        rev=[0]*self.size
+        k=0
+        for i in range(self.size):
+            if S[i]:
+                rev[i]=k
+                k+=1
+        edges=[]
+        for (i,j,w) in self.edges:
+            if S[i] and S[j]:
+                edges.append((rev[i],rev[j],w))
+        player=[0]*size
+        for i in range(size):
+            player[i]=self.player[incl[i]]
+        return(game(size, self.max_param, edges, player, self.typ), incl)
     
     def to_energy(self, power_two=True):
         if(self.typ == "energy"):
@@ -90,7 +108,7 @@ class game:
         
         
     @classmethod
-    def generate_random(cls, size, max_param, degree=2, bipartite=False, typ="parity", simple=True, one_player=False, all_priorities=False):
+    def generate_random(cls, size, max_param, degree=2, bipartite=False, typ="energy", simple=True, one_player=False, all_priorities=False, no_zero_cycles=False, well_spread_degree=0):
         edges=[]
         med = size//2
         if(all_priorities):
@@ -110,7 +128,7 @@ class game:
                         else:
                             j = rand.randrange(size)
                     successors.add(j)
-                
+
                 if(typ == "parity"):
                     if(all_priorities):
                         w = perm[i]
@@ -118,15 +136,24 @@ class game:
                         w = rand.randrange(max_param)+1
                 else:
                     w = rand.randrange(2*max_param) - max_param
+                    if(well_spread_degree):
+                        exp = rand.randrange(0,well_spread_degree)
+                        sign = rand.randrange(0,2) *2 -1 #-1 or 1
+                        w = sign * rand.randrange(size**exp, size**(exp+1))
                                        
                 edges.append((i,j,w))
-                
+        
+        if(no_zero_cycles):
+            for i in range(len(edges)):
+                edges[i]=(edges[i][0],edges[i][1],edges[i][2]*(size +1)+1)
+            max_param = max_param * (size +1) +1
+
         if(one_player):
             player=[0 for i in range(size)]
         else:
             player=[int(i<size//2) for i in range(size)]
         
-        return(game(size, max_param, edges, player, typ)) 
+        return(game(size, max([abs(w) for _,_,w in edges]), edges, player, typ)) 
     
     
     
@@ -324,6 +351,8 @@ class game:
         return(game(size, even_top_priority, edges, player, "parity"))
     
     
+    def favorite_energy_game():
+        return(game.from_file("instances/favorite_energy_game"))
     
 
 class parity_game_priorities_on_vertices:
@@ -419,3 +448,4 @@ class parity_game_priorities_on_vertices:
             for suc in str_successors:
                 edges.append((i, int(suc)))
         return(parity_game_priorities_on_vertices(size, max(priorities), edges, player, priorities))
+

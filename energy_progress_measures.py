@@ -2,31 +2,56 @@ from operator import truediv
 import util
 import time
 from copy import deepcopy
+import random
+from networkx.drawing.nx_agraph import to_agraph
+import networkx as nx
+import os
 
 class progress_measure:
     
-    def __init__(self, game):
+    def __init__(self, game, map=0, infos=None, alg="snare"):
         self.game = game
-        if(game.typ == "energy"):
-            self.map = [util.possibly_infinite_integer(0) for i in range(game.size)]
+        
+        if(map==0):
+            if(game.typ == "energy" and alg == "snare"):
+                self.map = [util.possibly_infinite_integer(0) for i in range(game.size)]
+            elif(game.typ == "energy"):
+                self.map = [0] * game.size
+            else:
+                self.map = [util.sparse_tuple() for i in range(game.size)]
         else:
-            self.map = [util.sparse_tuple() for i in range(game.size)]
-            
-        self.validity_of_edge = [None for e in range(game.number_edges)]  
-        self.validity_of_vert = [[None, None] for i in range(game.size)]
-        self.edge_needs_updating = [True for e in range(game.number_edges)]
-        self.optimal_edge = [None for i in range(game.size)]
+            self.map=map
         
-        self.infos={"trajectory":[[] for i in range(game.size)], "chrono":0}
+        if(alg == "snare"):
+            self.validity_of_edge = [None for e in range(game.number_edges)]  
+            self.validity_of_vert = [[None, None] for i in range(game.size)]
+            self.edge_needs_updating = [True for e in range(game.number_edges)]
+            self.optimal_edge = [None for i in range(game.size)]
         
-        if(game.typ == "energy"):
+        if(infos):
+            self.infos=infos
+        
+        elif(alg == "snare"):
+            self.infos={"trajectory":[[] for i in range(game.size)], "chrono":0}
+        else:
+            self.infos={'zones':[], 'iter_top_level':0, 'player':[]}
+        
+        if(game.typ == "energy" and alg == "snare"):
             self.dest_of_edge = [None for e in range(game.number_edges)] #map(j) + w(e) for e=(i,j), used only for typ="energy"
             for edge_ind in range(self.game.number_edges):
                 self.update_dest_of_edge(edge_ind)
         
-        self.globally_update_validity()
+            self.globally_update_validity()
+
+    def sub_progress_measure(self,S):
+        game, incl=self.game.subgame(S)
+        map=[self.map[incl[i]] for i in range(game.size)]
+        return(progress_measure(game,map,self.infos, alg="recursive"),incl) #maybe put a deepcopy here for infos?
     
-    
+    #######################################################################################
+    #### up to line 267 -> used for snare update algorithm (also called En+, or sup-) #####
+    #######################################################################################
+
     def write_step_of_trajectory(self):
         for i in range(self.game.size):
             if(self.map[i].infty):
@@ -240,10 +265,13 @@ class progress_measure:
                 lo = mid+1
         order.insert(lo, i)
     
+    ##################
+    #### now GKK #####
+    ##################
     
     def update_GKK(self):
         '''
-        implements the algorithm of Gurvich, Karzanov and Khachivan
+        implements the algorithm of Gurvich, Karzanov and Khachyian
         supports only energy games (for now)
         '''
         #first, compute attractor to invalids
@@ -308,7 +336,11 @@ class progress_measure:
         
         return("continue")
 
-        
+
+    ###################################################
+    #### some functions for displaying graphs etc #####
+    ###################################################
+
     def attribute_of_edge(self, edge_ind):
         rep={}
         (i,j,w) = self.game.edges[edge_ind]
@@ -328,20 +360,12 @@ class progress_measure:
         return(rep)
         
         
-    def attribute_of_vertex(self, i):
+    def attribute_of_vertex(self, i, color):
         rep={}
-        rep["shape"] = ["circle", "box"][self.game.player[i]]
+        rep["shape"] = ["box", "circle"][self.game.player[i]]
         rep["regular"] = 1
         rep["label"] = util.number_to_letters(i+1,len(util.base26(self.game.size)))
-        if(self.map[i].infty):
-            rep["color"] = {1:"red", -1:"blue"}[self.map[i].infty]
-        else:
-            if(self.validity_of_vert[i] == [1,0]):
-                rep["color"] = "lightcoral"
-            elif(self.validity_of_vert[i] == [0,1]):
-                rep["color"] = "lightblue"
-            else:
-                rep["color"] = "lightgray"
+        rep["color"] = color
         rep["style"] = "filled"
         return(rep)
         
@@ -363,3 +387,350 @@ class progress_measure:
             if(any([w>0 for w in succweights])):
                 rep[i]=1
         return(rep)
+
+
+    #######################################
+    #### code for recursive algorithm #####
+    #######################################
+
+    def resolve_game(self, choice_mode='smallest', transcript_mode='top_level', pivot_on_N=False):
+        #main procedure
+        #updates self.map in place until game is resolved
+        #returns winning regions and potential
+        #choice_mode tells us how we determine if we pivot over ZN or ZP
+        #transcript_mode just tells us what information to store for later study
+        #if pivot_on_N is true, we pivot on N always, recursively
+
+        #first, compute zones
+        (N,P,ZN,ZP, resolved)=self.compute_zones()
+
+        #main top-level loop: iterates either supZN or infZP
+        #until either a dominion is found (in which case we will recurse)
+        #or the game is resolved
+        while(not(resolved)):
+
+            if(transcript_mode == 'top_level'): #storing some information
+                self.infos['zones'].append((N.copy(),P.copy(),ZN.copy(),ZP.copy(),resolved))
+                self.infos['iter_top_level']+=1
+
+            player, rec_choice_mode, attr_choice_mode = self.player_and_choice_modes(ZN,ZP,choice_mode)
+            #deciding player and choice_mods for future calls according to prescribed options
+            #below, for explanations, we always assume Player = 1 (= Min)
+
+            #deciding starting value for F
+            F = ZN.copy() if player else ZP.copy()
+            if(pivot_on_N):
+                F = N.copy()
+                player = 1
+
+            if(transcript_mode == "top_level"):
+                self.infos['player'].append(player)
+
+            ########## main computation happens here ###########
+            Hplus,phiH = self.compute_sup_or_inf_to_F_or_return_dominion(player, F, rec_choice_mode, pivot_on_N=pivot_on_N)
+            ####################################################
+            
+            if Hplus: #found a (resolved) Max dominion 
+
+                #update map over H+ to correspond to phiH
+                for i in range(self.game.size):
+                    if Hplus[i]:
+                        self.map[i]=phiH[i]
+                
+                #attract to H+ while updating map in place
+                A=self.attract(Hplus,1-player)
+
+                #complement of A
+                Acompl=[1-A[i] for i in range(self.game.size)]
+                
+                if(sum(Acompl)):#if the complement is non-empty
+
+                    #then we recurse of the complement
+                    nnpg,incl = self.sub_progress_measure(Acompl)
+                    (nZNrec, nZPrec, nphirec)= nnpg.resolve_game(attr_choice_mode, transcript_mode=None, pivot_on_N=pivot_on_N)
+
+                    #convert vertex indices
+                    _,_,nphi = self.reindex(nZNrec,nZPrec,nphirec,incl,nnpg.game.size)
+
+                    #merge the two potentials (self.map over A and nphi over Acompl)
+                    #with the right delta
+                    #updates self.map in place
+                    self.merge_resolving_potentials(player, nphi, A)
+
+            #if no dominion, then we have computed supZN everywhere, so we continue the top-loop
+            #we just need to update the zones
+            (N,P,ZN,ZP, resolved)=self.compute_zones()
+
+        #return winning regions
+        return(ZN,ZP, self.map)
+    
+
+
+    def compute_sup_or_inf_to_F_or_return_dominion(self, player, F, rec_choice_mode, pivot_on_N=False):
+        #if player = 1, either return a set H+ where Max can win while avoiding F
+        #or compute sup^N over the whole game (in this case, return None, None)
+        #updates self.map in place
+        #the recursive calls are done according to the prescribed choice_mode, and whether we pivot on N
+        while 1:
+            #updates F and self.map in place, adding vertices whose paths
+            #all go to F
+            self.backtrack_all_paths(F)
+
+            #H is the complement of F
+            H=[1-F[i] for i in range(self.game.size)]
+
+            #recursive call on H, returns winning regions and resolving potential
+            npg, incl=self.sub_progress_measure(H)
+            (Hminusrec, Hplusrec, phiHrec) = npg.resolve_game(rec_choice_mode, transcript_mode=None,pivot_on_N=pivot_on_N)
+            
+            #convert to correct vertex indexing
+            Hm,Hp,phiH = self.reindex(Hminusrec, Hplusrec,phiHrec, incl, npg.game.size)
+
+            #possibly reverse according to player    
+            Hplus = Hp if player else Hm
+
+
+            if sum(Hplus): #there is an opponent dominion. Does someone want to escape?
+                #first compute which edges escape from H+ cap Vmin to F
+                edges_from_Hplus_cap_Vmin_to_F = [(i,j,w) for (i,j,w) in self.game.edges if Hplus[i] and self.game.player[i]==player and F[j]]
+                
+                if(edges_from_Hplus_cap_Vmin_to_F): # if there is an edge from H+ cap Vmin to F
+
+                    #look for minimising edge
+                    i0,j0,w0 = self.optimal_escaping_edge(edges_from_Hplus_cap_Vmin_to_F, player, phiH)
+                    #update map at i0, add to F, and continue
+                    self.map[i0]=self.map[j0]+w0
+                    F[i0]=1
+                    continue
+
+
+                else: #no escapes! so we have found a Max dominion a return it
+                    return(Hplus, phiH)
+
+
+            else: #case where H+ is empty
+                if(sum(H)): #if H is non-empty
+                    #compute escaping edges (there must be one) ie from H cap Vmax to F
+                    edges_from_H_cap_Vmax_to_F = [(i,j,w) for (i,j,w) in self.game.edges if H[i] and self.game.player[i] != player and F[j]]
+
+                    #compute maximising edge
+                    (i0,j0,w0) = self.optimal_escaping_edge(edges_from_H_cap_Vmax_to_F,1-player,phiH)
+                    
+                    #update map at i0, add to F, and continue
+                    self.map[i0]=self.map[j0] + w0
+                    F[i0]=1
+                    continue
+
+                else: #H is empty, so we are done
+                    return(None,None)
+                    
+
+
+    def compute_zones(self):  #recall, Min = 1, Max=0
+        #computes zones of the game, and whether it is resolved
+        N=[0]*self.game.size
+        P=[0]*self.game.size
+        Z=[0]*self.game.size
+        for i in range(self.game.size):
+            succweights=[(self.map[j] - self.map[i] + self.game.edges[edge_ind][2]) for (j,edge_ind) in self.game.succ[i]]
+            if(self.game.player[i]):
+                N[i]=any([w < 0 for w in succweights])
+                P[i]=all([w > 0 for w in succweights])
+            else:
+                N[i]=all([w < 0 for w in succweights])
+                P[i]=any([w > 0 for w in succweights])
+            Z[i]=(not(N[i] or P[i]))
+        esc=[0]*self.game.size
+        for i in range(self.game.size):
+            if (Z[i] and not(self.game.player[i])):
+                esc[i]=sum([(self.map[j] - self.map[i] + self.game.edges[edge_ind][2] == 0 and not(N[j])) for (j,edge_ind) in self.game.succ[i]])
+        Q=[i for i in range(self.game.size) if (Z[i] and self.game.player[i] and any([N[j] and self.map[j] - self.map[i] + self.game.edges[edge_ind][2] == 0 for (j,edge_ind) in self.game.succ[i]])) or (Z[i] and not(self.game.player[i]) and esc[i]==0)]
+        ZN=N.copy()
+        while(Q):
+            i=Q.pop()
+            ZN[i]=1
+            for (j,edge_ind) in self.game.pred[i]:
+                if(not(j in Q) and not(ZN[j]) and (self.map[i] - self.map[j] + self.game.edges[edge_ind][2] == 0)):
+                    if self.game.player[j]:
+                        Q.append(j)
+                    else:
+                        esc[j]-=1
+                        if(esc[j]==0):
+                            Q.append(j)
+        resolved=True #we also return a boolean telling if the game is resolved or not
+        for i in range(self.game.size):
+            if ZN[i]:
+                if self.game.player[i]:
+                    i_is_resolved=False
+                    for j,edge_ind in self.game.succ[i]:
+                        weight = self.map[j] - self.map[i] + self.game.edges[edge_ind][2]
+                        i_is_resolved=i_is_resolved or (ZN[j] and weight<=0)
+                    resolved=resolved and i_is_resolved
+                else:
+                    for j,edge_ind in self.game.succ[i]:
+                        weight = self.map[j] - self.map[i] + self.game.edges[edge_ind][2]
+                        resolved= resolved and (ZN[j] and weight <= 0)
+            else:
+                if not(self.game.player[i]):
+                    i_is_resolved=False
+                    for j,edge_ind in self.game.succ[i]:
+                        weight = self.map[j] - self.map[i] + self.game.edges[edge_ind][2]
+                        i_is_resolved=i_is_resolved or (not(ZN[j]) and weight>=0)
+                    resolved=resolved and i_is_resolved
+                else:
+                    for j,edge_ind in self.game.succ[i]:
+                        weight = self.map[j] - self.map[i] + self.game.edges[edge_ind][2]
+                        resolved= resolved and (not(ZN[j]) and weight >= 0)
+        return(N,P,ZN,[1-ZN[i] for i in range(self.game.size)],resolved)
+
+    def backtrack_all_paths(self, F):
+        #updates F and self.map in place to encapsulate vertices whose paths all go to F
+        esc = [0]*self.game.size
+        for i in range(self.game.size):
+            if not(F[i]):
+                esc[i]=sum([not(F[j]) for (j,_) in self.game.succ[i]])
+        Q = [i for i in range(self.game.size) if not(F[i]) and not(esc[i])]
+        while Q:
+            i=Q.pop()
+            F[i]=1
+            succweights=[(self.map[j] + self.game.edges[edge_ind][2]) for (j,edge_ind) in self.game.succ[i]]
+            if self.game.player[i]:
+                self.map[i] = min(succweights)
+            else:
+                self.map[i] = max(succweights)
+            for (j,_) in self.game.pred[i]:
+                if(not(j in Q) and not(F[j])):
+                    esc[j]-=1
+                    if(esc[j]==0):
+                        Q.append(j)
+        return
+
+    def attract(self,T,player):
+        #updates self.map in place and returns player-attractor to T
+        A=T.copy()
+        esc = [0]*self.game.size
+        for i in range(self.game.size):
+            if not(T[i]) and (self.game.player[i] != player):
+                esc[i]=sum([not(T[j]) for (j,_) in self.game.succ[i]])
+        Q=[i for i in range(self.game.size) if (not(T[i]) and self.game.player[i] != player and esc[i]==0) or (not(T[i]) and self.game.player[i] == player and any([T[j] for (j,_) in self.game.succ[i]]))]
+        while Q:
+            i=Q.pop()
+            A[i]=1
+            if(self.game.player[i] != player):
+                succweights=[(self.map[j] + self.game.edges[edge_ind][2]) for (j,edge_ind) in self.game.succ[i]]
+                if self.game.player[i]:
+                    self.map[i] = min(succweights)
+                else:
+                    self.map[i] = max(succweights)
+            else:
+                j,edge_ind=min([(j,edge_ind) for (j,edge_ind) in self.game.succ[i] if A[j]])
+                self.map[i] = self.map[j] + self.game.edges[edge_ind][2]
+            for j,_ in self.game.pred[i]:
+                if(not(j in Q) and not(A[j])):
+                    if self.game.player[j] != player:
+                        esc[j]-=1
+                        if(esc[j]==0):
+                            Q.append(j)
+                    else:
+                        Q.append(j)
+        return(A)
+
+
+
+    def player_and_choice_modes(self, ZN, ZP, choice_mode):
+        #computes player and choice_modes for future calls according to different
+        #possible options (specified in the string choice_mode)
+        rec_choice_mode=choice_mode
+        attr_choice_mode=choice_mode
+        if(choice_mode=='smallest'):
+            player=(sum(ZP)<=sum(ZN)) #min if we pivot on ZN (ie compute sup^ZN)
+        if(choice_mode=='alwaysZN'):
+            player=1
+        if(choice_mode=='alwaysZN_top_level'):
+            player=1
+            rec_choice_mode='smallest'
+            attr_choice_mode='smallest'
+        if(choice_mode=='alwaysZP'):
+            player=0
+        if(choice_mode=='random'):
+            player=random.randrange(0,2)
+        if(choice_mode=='top_level_prescribed'):
+            player=self.infos["prescribed_choices"].pop(0) if self.infos["prescribed_choices"] else 0
+            rec_choice_mode='smallest'
+            attr_choice_mode='smallest'
+        return(player, rec_choice_mode, attr_choice_mode)
+        
+
+    def reindex(self, setNrec, setPrec, phirec, incl, subgame_size):
+        #reindexing zones and potential according to inclusion incl
+        setN=[0]*self.game.size            
+        setP=[0]*self.game.size
+        phi=[0]*self.game.size
+        for i in range(subgame_size):
+            setN[incl[i]] = setNrec[i]
+            setP[incl[i]] = setPrec[i]
+            phi[incl[i]] = phirec[i]
+        return(setN,setP,phi)
+    
+    
+    def optimal_escaping_edge(self, edge_set, player, phiH):
+        #computes optimal (ie minimal if player=1) edge within the edge set
+        (i0,j0,w0)=edge_set[0]
+        opt=self.map[j0]-phiH[i0] + w0
+        for (i,j,w) in edge_set:
+            nopt=self.map[j] - phiH[i] + w
+            if ((player and nopt < opt) or (not(player) and nopt > opt)):
+                opt=nopt
+                (i0,j0,w0)=(i,j,w)
+        return(i0,j0,w0)
+
+
+    def merge_resolving_potentials(self,player, nphi,A):
+        #merges the two reducing potentials (self.map over A and nphi over Acompl)
+        #using the right bias delta
+        if(player):
+            delta1 = min([w for i,j,w in self.game.edges if not(A[i]) and A[j]]) if any([not(A[i]) and A[j] for i,j,_ in self.game.edges]) else 0
+            delta2 = min([self.map[i] for i in range(self.game.size) if A[i]])
+            delta3 = max([nphi[i] for i in range(self.game.size) if not(A[i])])
+            delta =  - delta1 - delta2 + delta3 
+            
+        else:
+            delta1 = max([w for i,j,w in self.game.edges if not(A[i]) and A[j]]) if any([not(A[i]) and A[j] for i,j,_ in self.game.edges]) else 0
+            delta2 = max([self.map[i] for i in range(self.game.size) if A[i]])
+            delta3 = min([nphi[i] for i in range(self.game.size) if not(A[i])])
+            delta =  (-delta1 - delta2 + delta3 )
+        
+        for i in range(self.game.size):
+            self.map[i] = self.map[i] + delta if A[i] else nphi[i]
+        
+
+    def draw(self, filename):
+        (N,P,ZN,ZP, resolved)=self.compute_zones()
+        color=[0]*self.game.size
+        for i in range(self.game.size):
+            if(N[i]):
+                color[i]="blue"
+            elif(ZN[i]):
+                color[i]="lightblue"
+            elif(P[i]):
+                color[i]="red"
+            else:
+                color[i]="lightcoral"
+        edges_with_attributes = [(i,j,self.attribute_of_edge(edge_ind)) for edge_ind, (i,j,_) in enumerate(self.game.edges)]
+        nodes_with_attributes = [(i,self.attribute_of_vertex(i, color[i])) for i in range(self.game.size)]
+       
+        G = nx.MultiDiGraph()
+
+        G.add_nodes_from(nodes_with_attributes)
+        G.add_edges_from(edges_with_attributes)
+
+        G.graph['edge'] = {'arrowsize': '0.6', 'splines': 'curved'}
+        G.graph['graph'] = {'scale': '1'}
+
+        A = to_agraph(G)
+        
+        # creating folder if necessary
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        A.layout('dot')                                                                 
+        A.draw(filename + ".png")

@@ -395,7 +395,7 @@ class possibly_infinite_integer:
         self.infty = infty
     
     def is_zero(self):
-        return(self == 0)
+        return(self.infty == 0 and self.value==0)
         
     def is_positive(self):
         return(self > 0)
