@@ -24,7 +24,7 @@ if(ex==1):
     # initialize execution with timeout of 10 seconds
     exec=energy_executions.execution(g,10)
 
-    # rune snare_update algorithm (this is FVI). We enable the option that
+    # run snare_update algorithm (this is FVI). We enable the option that
     # saves the transcript (this makes the algorithm much slower, but 
     # allows to visual it afterwards)
     exec.snare_update(write_transcript=True)
