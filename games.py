@@ -350,10 +350,95 @@ class game:
         edges.append((p,q,12*n+8))
         return(game(size, even_top_priority, edges, player, "parity"))
     
+    @classmethod
+    def Friedmann09bis(cls, n): #MAX-parity
+        #vertices = [b, a, d, dd, ddd, e, f, g, h, k, y, s, r, c]
+        #b_0=0, a_0=6n, d_0=12n, e_0=15n, f_0=16n, g_0=17n, h_0=18n, k_0=19n, s=20n, r=20n+1, c=20n+2, x=20n+3
+        #priorities in outgoing edges
+        a_0=6*n-2
+        d1_0=12*n
+        d2_0=13*n
+        d3_0=14*n
+        e_0=15*n
+        f_0=16*n
+        g_0=17*n
+        h_0=18*n 
+        k_0=19*n
+        y_0=20*n
+        s=12*n-4
+        r=12*n-3
+        c=12*n-2
+        x=12*n-1
+        size = 21*n
+        even_top_priority = 24*n + 6
+        player = [0 for i in range(6*n-2)]+[1 for i in range(6*n-2)] #b and a
+        player = player + [0 ,0, 1, 1] #s, r, c and x
+        player = player + [0 for i in range(3*n)] + [1 for i in range(2*n)] #d, e and f
+        player = player + [0 for i in range(n)] + [1 for i in range(n)] + [0 for i in range(2*n)] #g, h, k and y
+        #edges from b_0
+        edges=[(0,s, 8*n+3), (0,r, 8*n+3), (0,c, 8*n+3)]
+	#edges from a_0 
+        edges.append((a_0,0,8*n+4))
+        #From c to {r}
+        edges.append((c,r, 20*n))
+        for i in range(1,6*n-2):
+            #From b_i
+            edges.append((i,i-1,8*n+2*(i+1)+1))
+            edges.append((i,s,8*n+2*(i+1)+1))
+            edges.append((i,r,8*n+2*(i+1)+1))
+            #From a_i
+            edges.append((a_0+i,i,8*n+2*(i+1)+2))
+        for i in range(n):
+            #From s to f_i
+            edges.append((s,f_0+i,20*n+2))
+            #From r to g_i
+            edges.append((r,g_0+i,20*n+4))
+            #From d1_i
+            edges.append((d1_0+i,s,8*(i+1)+1))
+            edges.append((d1_0+i,c,8*(i+1)+1))
+            edges.append((d1_0+i,d2_0+i,8*(i+1)+1))
+            for j in range(2*i+1):
+                edges.append((d1_0+i,a_0+3*j+2,8*(i+1)+1))
+            #From d2_i
+            edges.append((d2_0+i,d3_0+i,8*(i+1)+3))
+            for j in range(2*i+1):
+                edges.append((d2_0+i,a_0+3*j+1,8*(i+1)+3))
+            #From d3_i
+            edges.append((d3_0+i,e_0+i,8*(i+1)+5))
+#            edges.append((d3_0+i,s,8*(i+1)+5))
+            for j in range(2*i+2):
+                edges.append((d3_0+i,a_0+3*j,8*(i+1)+5))
+            #From e_i
+            edges.append((e_0+i,d1_0+i,8*(i+1)+6))
+            edges.append((e_0+i,h_0+i,8*(i+1)+6))
+            #From g_i
+            edges.append((g_0+i,y_0+i,8*(i+1)+8))
+            edges.append((g_0+i,k_0+i,8*(i+1)+8))
+            #From k_i
+            edges.append((k_0+i,x,20*n+4*(i+1)+3))
+            for j in range(i+1,n):
+                edges.append((k_0+i,g_0+j,20*n+4*(i+1)+3))
+            #From y_i
+            edges.append((y_0+i,f_0+i,8*(i+1)+7))
+            edges.append((y_0+i,k_0+i,8*(i+1)+7))
+            #From f_i
+            edges.append((f_0+i,e_0+i,20*n+4*(i+1)+5))
+            #From h_i
+            edges.append((h_0+i,k_0+i,20*n+4*(i+1)+6))
+        edges.append((x,x,1))
+        edges.append((s,x,20*n+2))
+        edges.append((r,x,20*n+4))
+        return(game(size, even_top_priority, edges, player, "parity"))
     
-    def favorite_energy_game():
-        return(game.from_file("instances/favorite_energy_game"))
-    
+    def reverse_all_weights(self):
+        edges=[(i,j,-w) for (i,j,w) in self.edges]
+        return(game(self.size,self.max_param,edges, self.player,self.typ))
+
+    def reverse_players(self):
+        player=[1-p for p in self.player]
+        return(game(self.size, self.max_param, self.edges, player, self.typ))
+
+
 
 class parity_game_priorities_on_vertices:
 

@@ -7,7 +7,7 @@ import util
 from copy import deepcopy
 from networkx.drawing.nx_agraph import to_agraph
 import networkx as nx
-
+import os
 
 class execution:
     '''
@@ -188,7 +188,7 @@ class execution:
             color=[0]*phi.game.size
             for i in range(phi.game.size):
                 if(phi.map[i].infty):
-                    color[i] = {1:"red", -1:"blue"}[self.map[i].infty]
+                    color[i] = {1:"red", -1:"blue"}[phi.map[i].infty]
                 else:
                     if(phi.validity_of_vert[i] == [1,0]):
                         color[i] = "lightcoral"
@@ -217,6 +217,9 @@ class execution:
 
             A = to_agraph(G)
             
+            if("/" in filename):
+                os.makedirs(os.path.dirname(filename), exist_ok=True)
+
             A.layout('dot')                                                                 
             A.draw(filename + "{:03d}".format(t) + ".png")
         
@@ -257,7 +260,7 @@ class execution:
         print(incl)
 
 
-    def recursive_reduction(self, choice_mode="smallest", choice_prescription=[]):
+    def recursive_reduction(self, choice_mode="smallest", choice_prescription=[], draw_top_level_filename=False, forgetfull = True):
 
         start_time=time.time()
         phi = energy_progress_measures.progress_measure(self.game, alg="recursive")
@@ -266,8 +269,10 @@ class execution:
         if(choice_mode=='top_level_prescribed'):
             phi.infos['prescribed_choices']=choice_prescription
 
+        phi.resolve_game(choice_mode=choice_mode, draw_top_level_filename=draw_top_level_filename, forgetfull=forgetfull)
+    
         _,ZP,_=phi.resolve_game(choice_mode) #call to main recursive procedure
-        
+    
         self.infos=phi.infos
 
         self.infos["runtime"] = time.time() - start_time

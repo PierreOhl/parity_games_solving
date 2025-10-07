@@ -34,7 +34,7 @@ class progress_measure:
         elif(alg == "snare"):
             self.infos={"trajectory":[[] for i in range(game.size)], "chrono":0}
         else:
-            self.infos={'zones':[], 'iter_top_level':0, 'player':[]}
+            self.infos={'zones':[], 'iter_top_level':0, 'iter_same_N':0, 'player':[], 'vertex layers':[0]*game.size, "opt_edge":[0]*len(self.game.edges)}
         
         if(game.typ == "energy" and alg == "snare"):
             self.dest_of_edge = [None for e in range(game.number_edges)] #map(j) + w(e) for e=(i,j), used only for typ="energy"
@@ -341,32 +341,112 @@ class progress_measure:
     #### some functions for displaying graphs etc #####
     ###################################################
 
+
+    def draw(self, filename, layers=False, display_title=False, map=None):
+        (N,P,ZN,ZP, resolved)=self.compute_zones()
+
+        color=[0]*self.game.size
+        for i in range(self.game.size):
+            if(N[i]):
+                color[i]="blue"
+            elif(ZN[i]):
+                color[i]="lightblue"
+            elif(P[i]):
+                color[i]="red"
+            else:
+                color[i]="lightcoral"
+
+        edges_with_attributes = [(i,j,self.attribute_of_edge(edge_ind)) for edge_ind, (i,j,_) in enumerate(self.game.edges)]
+        nodes_with_attributes = [(i,self.attribute_of_vertex(i, color[i], xlabel=str(map[i]) if map else None)) for i in range(self.game.size)]
+       
+        G = nx.MultiDiGraph()
+
+        G.add_nodes_from(nodes_with_attributes)
+        G.add_edges_from(edges_with_attributes)
+
+        G.graph['edge'] = {'arrowsize': '0.6', 'splines': 'curved'}
+        G.graph['graph'] = {'scale': '1'}
+
+        
+        A = to_agraph(G)
+
+    
+        if(layers):#does not really work...
+            lay = self.infos["vertex layers"]
+            # define your global node order
+
+            order = sorted(range(len(lay)), key=lambda i: lay[i])
+            
+            
+            # enforce that all nodes are on the same rank
+            for node in order:
+                A.get_node(node).attr['rank'] = 'same'
+
+            # add invisible edges to force horizontal order
+            for u, v in zip(order[:-1], order[1:]):
+                A.add_edge(u, v, style="invis", weight="1000")
+
+            # tweak graph attributes if you want left-to-right
+        A.graph_attr.update(rankdir="LR")  # top-to-bottom layering
+            # or rankdir="LR" if you want the order vertically instead
+
+        if(display_title):
+            A.graph_attr.update(
+                label=display_title,
+                labelloc="t",   # "t" = top, "b" = bottom
+                fontsize="20",   # adjust size
+                fontcolor="blue" if display_title[0]=='s' else 'red' if display_title[0]=='i' else "black"
+            )
+
+        # creating folder if necessary
+        if("/" in filename):
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        A.layout('dot')                                                                 
+        A.draw(filename + ".png")
+
+
+    
+
     def attribute_of_edge(self, edge_ind):
         rep={}
         (i,j,w) = self.game.edges[edge_ind]
         modified_weight = self.map[j] - self.map[i] + w
-        one_endpoint_infty = self.map[i].infty or self.map[j].infty
-        rep["label"] = modified_weight.to_label()
-        if(modified_weight.infty):
-            rep["color"] = {1:"red", -1:"blue"}[modified_weight.infty]
+        if(str(type(self.map[i])) != "<class 'int'>"):
+            rep["label"] = modified_weight.to_label()
+            if(modified_weight.infty):
+                rep["color"] = {1:"red", -1:"blue"}[modified_weight.infty]
+            else:
+                if(modified_weight.is_zero()):
+                    rep["color"] = "black"
+                elif(modified_weight.is_positive()):
+                    rep["color"] = "red"
+                else:
+                    rep["color"] = "blue"
         else:
-            if(modified_weight.is_zero()):
-                rep["color"] = "black"
-            elif(modified_weight.is_positive()):
+            rep["label"] = str(modified_weight)
+            if(modified_weight==0):
+                    rep["color"] = "black"
+            elif(modified_weight>0):
                 rep["color"] = "red"
             else:
                 rep["color"] = "blue"
+        
+        if("opt_edge" in self.infos.keys() and self.infos['opt_edge'][edge_ind]):
+            rep["penwidth"]=2.5
         rep["fontcolor"] = rep["color"]
         return(rep)
         
         
-    def attribute_of_vertex(self, i, color):
+    def attribute_of_vertex(self, i, color, xlabel=None):
         rep={}
         rep["shape"] = ["box", "circle"][self.game.player[i]]
         rep["regular"] = 1
         rep["label"] = util.number_to_letters(i+1,len(util.base26(self.game.size)))
         rep["color"] = color
         rep["style"] = "filled"
+        if(xlabel):
+            rep["xlabel"]=xlabel
         return(rep)
         
         
@@ -392,8 +472,8 @@ class progress_measure:
     #######################################
     #### code for recursive algorithm #####
     #######################################
-
-    def resolve_game(self, choice_mode='smallest', transcript_mode='top_level', pivot_on_N=False):
+    
+    def resolve_game(self, choice_mode='smallest', transcript_mode='top_level', pivot_on_N=False, draw_top_level_filename=False, forgetfull = True):
         #main procedure
         #updates self.map in place until game is resolved
         #returns winning regions and potential
@@ -409,9 +489,10 @@ class progress_measure:
         #or the game is resolved
         while(not(resolved)):
 
-            if(transcript_mode == 'top_level'): #storing some information
-                self.infos['zones'].append((N.copy(),P.copy(),ZN.copy(),ZP.copy(),resolved))
-                self.infos['iter_top_level']+=1
+
+            if(draw_top_level_filename):#store a copy for drawing
+                to_be_drawn = deepcopy(self)
+            
 
             player, rec_choice_mode, attr_choice_mode = self.player_and_choice_modes(ZN,ZP,choice_mode)
             #deciding player and choice_mods for future calls according to prescribed options
@@ -423,13 +504,15 @@ class progress_measure:
                 F = N.copy()
                 player = 1
 
-            if(transcript_mode == "top_level"):
-                self.infos['player'].append(player)
-
             ########## main computation happens here ###########
-            Hplus,phiH = self.compute_sup_or_inf_to_F_or_return_dominion(player, F, rec_choice_mode, pivot_on_N=pivot_on_N)
+            Hplus,phiH = self.compute_sup_or_inf_to_F_or_return_dominion(player, F, rec_choice_mode, pivot_on_N=pivot_on_N, forgetfull=forgetfull)
             ####################################################
-            
+            if(draw_top_level_filename):
+                fn = draw_top_level_filename + str(self.infos["iter_top_level"])
+                title = "supZN" if player else "supN" if pivot_on_N else "infZP"
+                to_be_drawn.infos["opt_edge"]=self.infos["opt_edge"].copy()
+                to_be_drawn.draw(fn, display_title=title)
+
             if Hplus: #found a (resolved) Max dominion 
 
                 #update map over H+ to correspond to phiH
@@ -447,7 +530,7 @@ class progress_measure:
 
                     #then we recurse of the complement
                     nnpg,incl = self.sub_progress_measure(Acompl)
-                    (nZNrec, nZPrec, nphirec)= nnpg.resolve_game(attr_choice_mode, transcript_mode=None, pivot_on_N=pivot_on_N)
+                    (nZNrec, nZPrec, nphirec)= nnpg.resolve_game(attr_choice_mode, transcript_mode=None, pivot_on_N=pivot_on_N, forgetfull=forgetfull)
 
                     #convert vertex indices
                     _,_,nphi = self.reindex(nZNrec,nZPrec,nphirec,incl,nnpg.game.size)
@@ -459,29 +542,73 @@ class progress_measure:
 
             #if no dominion, then we have computed supZN everywhere, so we continue the top-loop
             #we just need to update the zones
+            oldN = N.copy()
             (N,P,ZN,ZP, resolved)=self.compute_zones()
+
+            if(transcript_mode == 'top_level'): #storing some information
+                self.infos['zones'].append((N.copy(),P.copy(),ZN.copy(),ZP.copy(),resolved))
+                self.infos['iter_top_level']+=1
+                self.infos['player'].append(player)
+                if(oldN == N):
+                    self.infos['iter_same_N']+=1
+        
+        if(draw_top_level_filename):
+                fn = draw_top_level_filename + str(self.infos["iter_top_level"]+1)
+                title = "resolved"
+                self.draw(fn, display_title=title)
 
         #return winning regions
         return(ZN,ZP, self.map)
     
 
 
-    def compute_sup_or_inf_to_F_or_return_dominion(self, player, F, rec_choice_mode, pivot_on_N=False):
+    def compute_sup_or_inf_to_F_or_return_dominion(self, player, F, rec_choice_mode, pivot_on_N=False, store_layers=False, forgetfull = True):
         #if player = 1, either return a set H+ where Max can win while avoiding F
         #or compute sup^N over the whole game (in this case, return None, None)
         #updates self.map in place
         #the recursive calls are done according to the prescribed choice_mode, and whether we pivot on N
-        while 1:
+        #if store_layers is True, then we additionally store the layers (TODO: to be fixed)
+        
+        if(store_layers):
+            l=1 #initialising layer index
+            mult=2*player -1 #1 if player is Min and -1 otherwise
+            for i in range(self.game.size): #erasing layer info for vertices not in F
+                if(not(F[i])):
+                    self.infos["vertex layers"][i]=0
+
+        if(not(forgetfull)):#in this case we should already initialise the subgame
+            npg = deepcopy(self)
+            incl = [i for i in range(self.game.size)]
+
+        while 1: #main loop
             #updates F and self.map in place, adding vertices whose paths
             #all go to F
             self.backtrack_all_paths(F)
+
+            attr_layer_empty=True
+            if(store_layers): #add new layer info for vertices just added to F
+                for i in range(self.game.size):
+                    if(F[i] and self.infos["vertex layers"]):
+                        self.infos["vertex layers"][i]= mult * l
+                        attr_layer_empty = attr_layer_empty and False
+                        
+            #if attractor is non empty, increment l
+            if(not(attr_layer_empty)):
+                l+=1
 
             #H is the complement of F
             H=[1-F[i] for i in range(self.game.size)]
 
             #recursive call on H, returns winning regions and resolving potential
-            npg, incl=self.sub_progress_measure(H)
-            (Hminusrec, Hplusrec, phiHrec) = npg.resolve_game(rec_choice_mode, transcript_mode=None,pivot_on_N=pivot_on_N)
+            if(forgetfull):#in this case we redefine the new game from the original one
+                npg, incl = self.sub_progress_measure(H)
+            else:#in this case we keep the same potential that was previously computed
+                #we need to be extra careful here with updating inclusions
+                nH = [H[incl[j]] for j in range(npg.game.size)]
+                npg, nincl = npg.sub_progress_measure(nH)
+                incl = [incl[nincl[k]] for k in range(npg.game.size)]
+
+            (Hminusrec, Hplusrec, phiHrec) = npg.resolve_game(rec_choice_mode, transcript_mode=None,pivot_on_N=pivot_on_N, forgetfull=forgetfull)
             
             #convert to correct vertex indexing
             Hm,Hp,phiH = self.reindex(Hminusrec, Hplusrec,phiHrec, incl, npg.game.size)
@@ -492,36 +619,53 @@ class progress_measure:
 
             if sum(Hplus): #there is an opponent dominion. Does someone want to escape?
                 #first compute which edges escape from H+ cap Vmin to F
-                edges_from_Hplus_cap_Vmin_to_F = [(i,j,w) for (i,j,w) in self.game.edges if Hplus[i] and self.game.player[i]==player and F[j]]
+                edges_from_Hplus_cap_Vmin_to_F = [(i,j,w,e) for e,(i,j,w) in enumerate(self.game.edges) if Hplus[i] and self.game.player[i]==player and F[j]]
                 
                 if(edges_from_Hplus_cap_Vmin_to_F): # if there is an edge from H+ cap Vmin to F
 
-                    #look for minimising edge
-                    i0,j0,w0 = self.optimal_escaping_edge(edges_from_Hplus_cap_Vmin_to_F, player, phiH)
-                    #update map at i0, add to F, and continue
-                    self.map[i0]=self.map[j0]+w0
+                    #look for minimising edge (updates map in place)
+                    i0,_,_ = self.optimal_escaping_edge(edges_from_Hplus_cap_Vmin_to_F, player, phiH)
+                    #add to F, and continue
                     F[i0]=1
+
+                    #store layer information
+                    if(store_layers):
+                        self.infos["vertex layers"][i0]=mult*l
+                        l+=1
+                        
                     continue
 
 
                 else: #no escapes! so we have found a Max dominion a return it
+
+                    if(store_layers):#add layer info if needed
+                        for i in range(self.game.size):
+                            if Hplus[i]:
+                                self.infos["vertex layers"][i]=mult*(l+2)
+
                     return(Hplus, phiH)
 
 
             else: #case where H+ is empty
                 if(sum(H)): #if H is non-empty
                     #compute escaping edges (there must be one) ie from H cap Vmax to F
-                    edges_from_H_cap_Vmax_to_F = [(i,j,w) for (i,j,w) in self.game.edges if H[i] and self.game.player[i] != player and F[j]]
+                    edges_from_H_cap_Vmax_to_F = [(i,j,w,e) for e,(i,j,w) in enumerate(self.game.edges) if H[i] and self.game.player[i] != player and F[j]]
 
-                    #compute maximising edge
-                    (i0,j0,w0) = self.optimal_escaping_edge(edges_from_H_cap_Vmax_to_F,1-player,phiH)
+                    #compute maximising edge and update in place
+                    i0,_,_ = self.optimal_escaping_edge(edges_from_H_cap_Vmax_to_F,1-player,phiH)
                     
-                    #update map at i0, add to F, and continue
-                    self.map[i0]=self.map[j0] + w0
+                    #add to F and continue 
                     F[i0]=1
+
+                    #store layer information
+                    if(store_layers):
+                        self.infos["vertex layers"][i0]=mult*l
+                        l+=1
+                    
                     continue
 
                 else: #H is empty, so we are done
+    
                     return(None,None)
                     
 
@@ -593,11 +737,10 @@ class progress_measure:
         while Q:
             i=Q.pop()
             F[i]=1
-            succweights=[(self.map[j] + self.game.edges[edge_ind][2]) for (j,edge_ind) in self.game.succ[i]]
-            if self.game.player[i]:
-                self.map[i] = min(succweights)
-            else:
-                self.map[i] = max(succweights)
+            #compute optimal outgoing edge
+            self.compute_optimal_outgoing_edge(i)
+
+            #update queue and counts over predecessors
             for (j,_) in self.game.pred[i]:
                 if(not(j in Q) and not(F[j])):
                     esc[j]-=1
@@ -617,14 +760,12 @@ class progress_measure:
             i=Q.pop()
             A[i]=1
             if(self.game.player[i] != player):
-                succweights=[(self.map[j] + self.game.edges[edge_ind][2]) for (j,edge_ind) in self.game.succ[i]]
-                if self.game.player[i]:
-                    self.map[i] = min(succweights)
-                else:
-                    self.map[i] = max(succweights)
+                self.compute_optimal_outgoing_edge(i)
             else:
-                j,edge_ind=min([(j,edge_ind) for (j,edge_ind) in self.game.succ[i] if A[j]])
+                j,edge_ind=min([(j,edge_ind) for (j,edge_ind) in self.game.succ[i] if A[j] and j != i])
                 self.map[i] = self.map[j] + self.game.edges[edge_ind][2]
+                self.infos["opt_edge"][edge_ind]=1
+
             for j,_ in self.game.pred[i]:
                 if(not(j in Q) and not(A[j])):
                     if self.game.player[j] != player:
@@ -635,6 +776,23 @@ class progress_measure:
                         Q.append(j)
         return(A)
 
+    def compute_optimal_outgoing_edge(self, i):
+        #compute optimal outgoing edge from i, update self.map in place and store opt edge
+        j0,e0=self.game.succ[i][0]
+        w0=self.game.edges[e0][2]
+        opt=self.map[j0] + w0
+        player_mult = 2 * self.game.player[i] -1
+        for j, edge_ind in self.game.succ[i]:
+            w=self.game.edges[edge_ind][2]
+            if(player_mult * (self.map[j] + w) < player_mult * opt):
+                opt = self.map[j] + w
+                e0 = edge_ind
+
+        #store optimal edge
+        self.infos["opt_edge"][e0]=1
+
+        #update map
+        self.map[i] = opt
 
 
     def player_and_choice_modes(self, ZN, ZP, choice_mode):
@@ -675,13 +833,16 @@ class progress_measure:
     
     def optimal_escaping_edge(self, edge_set, player, phiH):
         #computes optimal (ie minimal if player=1) edge within the edge set
-        (i0,j0,w0)=edge_set[0]
+        (i0,j0,w0,e0)=edge_set[0]
         opt=self.map[j0]-phiH[i0] + w0
-        for (i,j,w) in edge_set:
+        for (i,j,w,edge_ind) in edge_set:
             nopt=self.map[j] - phiH[i] + w
             if ((player and nopt < opt) or (not(player) and nopt > opt)):
                 opt=nopt
                 (i0,j0,w0)=(i,j,w)
+                e0=edge_ind
+        self.map[i0]=self.map[j0]+w0
+        self.infos["opt_edge"][e0] = 1
         return(i0,j0,w0)
 
 
@@ -703,34 +864,3 @@ class progress_measure:
         for i in range(self.game.size):
             self.map[i] = self.map[i] + delta if A[i] else nphi[i]
         
-
-    def draw(self, filename):
-        (N,P,ZN,ZP, resolved)=self.compute_zones()
-        color=[0]*self.game.size
-        for i in range(self.game.size):
-            if(N[i]):
-                color[i]="blue"
-            elif(ZN[i]):
-                color[i]="lightblue"
-            elif(P[i]):
-                color[i]="red"
-            else:
-                color[i]="lightcoral"
-        edges_with_attributes = [(i,j,self.attribute_of_edge(edge_ind)) for edge_ind, (i,j,_) in enumerate(self.game.edges)]
-        nodes_with_attributes = [(i,self.attribute_of_vertex(i, color[i])) for i in range(self.game.size)]
-       
-        G = nx.MultiDiGraph()
-
-        G.add_nodes_from(nodes_with_attributes)
-        G.add_edges_from(edges_with_attributes)
-
-        G.graph['edge'] = {'arrowsize': '0.6', 'splines': 'curved'}
-        G.graph['graph'] = {'scale': '1'}
-
-        A = to_agraph(G)
-        
-        # creating folder if necessary
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-
-        A.layout('dot')                                                                 
-        A.draw(filename + ".png")
