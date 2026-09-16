@@ -8,6 +8,7 @@ from copy import deepcopy
 from networkx.drawing.nx_agraph import to_agraph
 import networkx as nx
 import os
+import bipotentials
 
 class execution:
     '''
@@ -280,3 +281,19 @@ class execution:
 
         self.solution = [i for i in range(self.game.size) if ZP[i]]
 
+
+    def bipotential_iteration(self):
+
+        self.infos["algorithm"] = "bipotential"
+
+        start_time = time.time()
+        phi = bipotentials.bipotential(self.game)
+        iter=0
+
+        while(not(all([phi.is_won(i) for i in range(self.game.size)])) and time.time() - start_time < self.timeout):
+            phi.update()
+            iter +=1
+
+        self.infos["runtime"] = time.time() - start_time
+        self.solution = [i for i in range(self.game.size) if phi.winning_regions[0][i]]
+        self.infos["iterations"] = iter

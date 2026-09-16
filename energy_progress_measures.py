@@ -864,3 +864,4 @@ class progress_measure:
         for i in range(self.game.size):
             self.map[i] = self.map[i] + delta if A[i] else nphi[i]
         
+

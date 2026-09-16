@@ -438,7 +438,28 @@ class game:
         player=[1-p for p in self.player]
         return(game(self.size, self.max_param, self.edges, player, self.typ))
 
-
+    def attractor(self, player, target, subset):
+        #computes attractor to target V->{0,1} within subset of vertices
+        q = [i for i in range(self.size) if target[i] and subset[i]]
+        esc = [0] * self.size
+        for i in range(self.size):
+            if not(self.player[i] == player):
+                esc[i] = sum([subset[j] for j,_ in self.succ[i]])
+                if esc[i] == 0 and subset[i] and not(target[i]):
+                    q.append(i)
+        attr = [0] * self.size
+        while(q):
+            i = q.pop()
+            attr[i]=1
+            for k,_ in self.pred[i]:
+                if subset[k] and not(attr[k]) and not(k in q):
+                    if self.player[k] == player:
+                        q.append(k)
+                    else:
+                        esc[k] -= 1
+                        if esc[k] == 0:
+                            q.append(k)
+        return(attr)
 
 class parity_game_priorities_on_vertices:
 
@@ -533,4 +554,5 @@ class parity_game_priorities_on_vertices:
             for suc in str_successors:
                 edges.append((i, int(suc)))
         return(parity_game_priorities_on_vertices(size, max(priorities), edges, player, priorities))
+
 
