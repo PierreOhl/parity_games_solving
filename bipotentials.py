@@ -56,7 +56,7 @@ class bipotential:
                     fixed[i]=1
                     #inspect predecessors
                     for k,edge_ind in self.game.pred[i]:
-                        if self.game.player[k] == player and not(fixed[k]) and self.is_valid_edg(1-player, edge_ind):
+                        if self.game.player[k] == player and not(fixed[k]) and self.is_valid_edg(1-player, edge_ind) and not(self.is_won(k)):
                             esc[k] = esc[k] -1
                             if(esc[k]==0):
                                 pl_to_be_fixed.append(k)
